@@ -1,0 +1,46 @@
+export const HOTSPOT_POSITIONS: Record<string, { top: number; left: number }> = {
+  c1: { top: 140, left: 700 },
+  c2: { top: 230, left: 820 },
+
+  c3: { top: 180, left: 720 },
+  c4: { top: 280, left: 860 },
+  c5: { top: 380, left: 760 },
+  c6: { top: 480, left: 900 },
+
+  c7: { top: 180, left: 720 },
+
+  c8: { top: 140, left: 720 },
+  c9: { top: 240, left: 860 },
+  c10: { top: 340, left: 760 },
+  c11: { top: 440, left: 900 },
+  c12: { top: 540, left: 800 },
+
+  c13: { top: 100, left: 700 },
+  c14: { top: 160, left: 820 },
+  c15: { top: 220, left: 940 },
+  c16: { top: 280, left: 740 },
+  c17: { top: 340, left: 860 },
+  c18: { top: 400, left: 980 },
+  c19: { top: 460, left: 720 },
+  c20: { top: 520, left: 840 },
+  c21: { top: 580, left: 960 },
+  c22: { top: 120, left: 1040 },
+  c23: { top: 200, left: 660 },
+  c24: { top: 300, left: 1080 },
+  c25: { top: 360, left: 700 },
+  c26: { top: 440, left: 820 },
+  c27: { top: 500, left: 940 },
+  c28: { top: 580, left: 740 },
+  c29: { top: 140, left: 900 },
+  c30: { top: 240, left: 1020 },
+  c31: { top: 340, left: 660 },
+  c32: { top: 440, left: 1060 },
+  c33: { top: 540, left: 860 },
+
+  c34: { top: 220, left: 760 },
+  c35: { top: 360, left: 900 },
+
+  c36: { top: 220, left: 760 },
+  c37: { top: 360, left: 900 },
+  c38: { top: 500, left: 1040 },
+};
