@@ -62,6 +62,7 @@ export type NormalizedTimelineEvent = {
   summary: string;
   color: string;
   mapKey: MapKey;
+  mapImageUri?: string;
   mapRegionLabel?: string;
   borderChangePrompt: string;
   borderChangeText?: string;
@@ -271,6 +272,11 @@ type SanityTimelineEvent = {
   borderChangePrompt?: string;
   borderChangeText?: string;
   mapKey?: string;
+  map?: {
+    mapKey?: string;
+    regionLabel?: string;
+    imageUrl?: string;
+  };
   mapRegionLabel?: string;
   sortOrder?: number;
   era?: SanityEra;
@@ -307,6 +313,7 @@ const EXPERIENCE_CONTENT_QUERY = `
     borderChangePrompt,
     borderChangeText,
     mapKey,
+    map->{mapKey, regionLabel, "imageUrl": image.asset->url},
     mapRegionLabel,
     sortOrder,
     era->{_id, eraKey, tabLabel, defaultTitle, timePeriod, summary, sortOrder},
@@ -582,6 +589,8 @@ function normalizeSanityContent(payload: SanityPayload): ExperienceContent | nul
       const era = eraByKey[eraKey];
       if (!era) return null;
 
+      const resolvedMapKey = event.map?.mapKey ?? event.mapKey;
+
       const hotspots = (event.hotspots || [])
         .map((hotspot): NormalizedHotspot | null => {
           const knowledgeId = hotspot.knowledge?._id;
@@ -615,8 +624,9 @@ function normalizeSanityContent(payload: SanityPayload): ExperienceContent | nul
         timePeriod: event.timePeriodOverride || era.timePeriod,
         summary: event.summaryOverride || era.summary,
         color: era.color,
-        mapKey: isMapKey(event.mapKey) ? event.mapKey : DEFAULT_MAP_KEY,
-        mapRegionLabel: event.mapRegionLabel,
+        mapKey: isMapKey(resolvedMapKey) ? resolvedMapKey : DEFAULT_MAP_KEY,
+        mapImageUri: event.map?.imageUrl,
+        mapRegionLabel: event.mapRegionLabel ?? event.map?.regionLabel,
         borderChangePrompt: event.borderChangePrompt || BORDER_CHANGE_PROMPT,
         borderChangeText: event.borderChangeText,
         sortOrder: event.sortOrder ?? index,

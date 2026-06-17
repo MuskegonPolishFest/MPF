@@ -156,34 +156,6 @@ const DEFAULT_INDEX = Math.max(
   0
 );
 
-const MAP_1635 = require('@/assets/maps_svg/1635-Realsize.svg');
-const MAP_1699 = require('@/assets/maps_svg/1699,1701,1713.svg');
-const MAP_1721 = require('@/assets/maps_svg/1721.svg');
-const MAP_1772 = require('@/assets/maps_svg/1772.svg');
-const MAP_1793 = require('@/assets/maps_svg/1793.svg');
-const MAP_1795 = require('@/assets/maps_svg/1795.svg');
-const MAP_1807 = require('@/assets/maps_svg/1807.svg');
-const MAP_1815 = require('@/assets/maps_svg/1815.svg');
-const MAP_1831 = require('@/assets/maps_svg/1831.svg');
-const MAP_1846 = require('@/assets/maps_svg/1846.svg');
-const MAP_1848 = require('@/assets/maps_svg/1848.svg');
-const MAP_1867 = require('@/assets/maps_svg/1867.svg');
-const MAP_1871 = require('@/assets/maps_svg/1871.svg');
-const MAP_1878 = require('@/assets/maps_svg/1878, 1884,1894,1904.svg');
-const MAP_1917 = require('@/assets/maps_svg/1917.svg');
-const MAP_1918 = require('@/assets/maps_svg/1918 - 5.svg');
-const MAP_1919 = require('@/assets/maps_svg/1919-1.svg');
-const MAP_1920 = require('@/assets/maps_svg/1920, 1923.svg');
-const MAP_1922 = require('@/assets/maps_svg/1922-2, 1924, 1935.svg');
-const MAP_1938 = require('@/assets/maps_svg/1938 -1.svg');
-const MAP_1939 = require('@/assets/maps_svg/1939-2.svg');
-const MAP_1940 = require('@/assets/maps_svg/1940.1942.svg');
-const MAP_1944 = require('@/assets/maps_svg/1944.svg');
-const MAP_1945 = require('@/assets/maps_svg/1945 - 5.svg');
-const MAP_1948 = require('@/assets/maps_svg/1948, 1951, 1960, 1970, 1975, 1980, 1987.svg');
-const MAP_1989 = require('@/assets/maps_svg/1989.svg');
-const MAP_1993 = require('@/assets/maps_svg/1993, 2002, 2011.svg');
-
 const RIGHT_ALIGNED_MAP_POSITION = { right: 0, top: '32%' };
 const LEFT_BACKGROUND_VECTOR = require('@/assets/maps_svg/background-vector.svg');
 
@@ -223,35 +195,6 @@ const LEGEND_ITEMS = [
   },
 ];
 
-const MAP_BY_FLOOR_YEAR: Array<{ startYear: number; source: number }> = [
-  { startYear: 1635, source: MAP_1635 },
-  { startYear: 1686, source: MAP_1699 },
-  { startYear: 1721, source: MAP_1721 },
-  { startYear: 1772, source: MAP_1772 },
-  { startYear: 1793, source: MAP_1793 },
-  { startYear: 1795, source: MAP_1795 },
-  { startYear: 1807, source: MAP_1807 },
-  { startYear: 1815, source: MAP_1815 },
-  { startYear: 1831, source: MAP_1831 },
-  { startYear: 1846, source: MAP_1846 },
-  { startYear: 1848, source: MAP_1848 },
-  { startYear: 1867, source: MAP_1867 },
-  { startYear: 1871, source: MAP_1871 },
-  { startYear: 1878, source: MAP_1878 },
-  { startYear: 1917, source: MAP_1917 },
-  { startYear: 1918, source: MAP_1918 },
-  { startYear: 1919, source: MAP_1919 },
-  { startYear: 1920, source: MAP_1920 },
-  { startYear: 1922, source: MAP_1922 },
-  { startYear: 1938, source: MAP_1938 },
-  { startYear: 1939, source: MAP_1939 },
-  { startYear: 1940, source: MAP_1940 },
-  { startYear: 1944, source: MAP_1944 },
-  { startYear: 1945, source: MAP_1945 },
-  { startYear: 1948, source: MAP_1948 },
-  { startYear: 1989, source: MAP_1989 },
-  { startYear: 1993, source: MAP_1993 },
-];
 const GUIDE_LENS: Record<string, number[]> = {
   Culture: [1635, 1653],
   Hero: [1772, 1793, 1795],
@@ -363,16 +306,6 @@ const BORDER_CHANGE_BY_YEAR: Record<number, string> = {
 };
 
 
-function getEraBackgroundMap(year: number) {
-  for (let index = MAP_BY_FLOOR_YEAR.length - 1; index >= 0; index -= 1) {
-    if (year >= MAP_BY_FLOOR_YEAR[index].startYear) {
-      return MAP_BY_FLOOR_YEAR[index].source;
-    }
-  }
-
-  return MAP_1635;
-}
-
 function getIndexFromYear(items: TimelineEraItem[], year: number, fallbackIndex: number) {
   const foundIndex = items.findIndex((item) => item.year === year);
   return foundIndex >= 0 ? foundIndex : fallbackIndex;
@@ -482,8 +415,11 @@ export default function TimelineScreen({
     if (selectedEra?.year != null) onTimelineYearChange?.(selectedEra.year);
   }, [selectedEra?.year, onTimelineYearChange]);
   const selectedEraMap = useMemo(
-    () => MAP_BY_KEY[selectedEvent?.mapKey ?? DEFAULT_MAP_KEY],
-    [selectedEvent?.mapKey]
+    () =>
+      selectedEvent?.mapImageUri
+        ? { uri: selectedEvent.mapImageUri }
+        : MAP_BY_KEY[selectedEvent?.mapKey ?? DEFAULT_MAP_KEY],
+    [selectedEvent?.mapImageUri, selectedEvent?.mapKey]
   );
 
   const targetEraKey = selectedEvent?.eraKey ?? selectedEra?.eraKey ?? 'golden_age';
