@@ -13,6 +13,7 @@ import Svg, { Path } from 'react-native-svg';
 import { MainColors, Typography } from '@/constants/theme';
 import { useVisited } from '@/components/VisitedContext';
 import { POI_DETAILS, EARLIEST_TIMELINE_YEAR_BY_ERA } from '../constants/contentData';
+import { useExperienceContent } from '@/hooks/useExperienceContent';
 
 function BackIcon({ size = 28, color = '#1C1B1F' }) {
   return (
@@ -64,8 +65,13 @@ export default function POIDetailScreen() {
   const params = useLocalSearchParams();
   const currentId = paramFirst(params.id) || DEFAULT_MAIN_ID;
   const returnParams = buildReturnParams(params);
+  const content = useExperienceContent();
 
-  const mainPoi = POI_DETAILS[currentId] || POI_DETAILS[DEFAULT_MAIN_ID];
+  const mainPoi =
+    content.knowledgeById[currentId] ||
+    content.knowledgeById[DEFAULT_MAIN_ID] ||
+    POI_DETAILS[currentId] ||
+    POI_DETAILS[DEFAULT_MAIN_ID];
   const { visitedIds, markVisited } = useVisited();
 
   // Record "whether the user has visited this POI before entering this POI detail page"
@@ -103,8 +109,8 @@ export default function POIDetailScreen() {
   const handleClose = () => {
     const primaryEra = mainPoi.eraKeys?.[0];
     const year = primaryEra
-      ? EARLIEST_TIMELINE_YEAR_BY_ERA[primaryEra]
-      : EARLIEST_TIMELINE_YEAR_BY_ERA.all;
+      ? content.earliestTimelineYearByEra[primaryEra] ?? EARLIEST_TIMELINE_YEAR_BY_ERA[primaryEra]
+      : content.earliestTimelineYearByEra.all ?? EARLIEST_TIMELINE_YEAR_BY_ERA.all;
     router.replace({
       pathname: '/',
       params: {
@@ -116,14 +122,14 @@ export default function POIDetailScreen() {
   const relatedPois =
     (mainPoi.relatedIds || [])
       .map((id) => {
-        const poi = POI_DETAILS[id];
+        const poi = content.knowledgeById[id] || POI_DETAILS[id];
         if (!poi) return null;
         return {
           id: poi.id,
           title: poi.titleTop,
           value: poi.yearLabel,
           description: poi.summary || poi.description,
-          image: poi.mainImage,
+          image: poi.mainImage || poi.imageUri,
         };
       })
       .filter(Boolean) || [];
@@ -162,8 +168,16 @@ export default function POIDetailScreen() {
         <View style={[styles.mainContent, contentFlex]}>
           {/* Embedded video: use key={mediaResetKey} from useVisited() so GuideScreen reset restarts playback. */}
           <View style={styles.imagePlaceholder}>
-            {mainPoi.mainImage ? (
-              <Image source={mainPoi.mainImage} style={styles.mainImage} contentFit="cover" />
+            {mainPoi.mainImage || mainPoi.imageUri ? (
+              <Image
+                source={
+                  typeof (mainPoi.mainImage || mainPoi.imageUri) === 'string'
+                    ? { uri: mainPoi.mainImage || mainPoi.imageUri }
+                    : mainPoi.mainImage || mainPoi.imageUri
+                }
+                style={styles.mainImage}
+                contentFit="cover"
+              />
             ) : null}
           </View>
           <View style={styles.titleRow}>
@@ -198,7 +212,11 @@ export default function POIDetailScreen() {
             >
               <View style={styles.relatedImagePlaceholder}>
                 {item.image ? (
-                  <Image source={item.image} style={styles.relatedImage} contentFit="cover" />
+                  <Image
+                    source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                    style={styles.relatedImage}
+                    contentFit="cover"
+                  />
                 ) : null}
               </View>
               <View style={styles.relatedCardContent}>

@@ -1,26 +1,23 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, ToastAndroid, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { QuizResultColors } from '@/constants/theme';
-
 import { TimelineItem, TimelineScrubber } from '@/components/timeline-scrubber';
-import { EraColors, EraTabTheme, FontFamily, MainColors } from '@/constants/theme';
-import { EraKey, POI_DETAILS } from '@/constants/contentData';
-import { HOTSPOT_POSITIONS } from '@/constants/hotspotPositions';
+import MapHotspot from '@/components/MapHotspot';
+import { EndJourneyFullScreen } from '@/components/EndJourneyFullScreen';
+import { useVisited } from '@/components/VisitedContext';
+import { EraColors, EraTabTheme, QuizResultColors, FontFamily, MainColors } from '@/constants/theme';
+import { EraKey } from '@/constants/contentData';
 import GuideCard from '../GuideCard';
 import LegendCard from '../LegendCard';
 import GuideLegendModal from '../GuideLegendModal';
 import GuideIntroModal from '../GuideIntroModal';
-
-const HOME_ICON = require('@/assets/General_Icons/ Home_icon.svg');
-
-import MapHotspot from '@/components/MapHotspot';
-import { EndJourneyFullScreen } from '@/components/EndJourneyFullScreen';
-import { useVisited } from '@/components/VisitedContext';
+import { MAP_BY_KEY, DEFAULT_MAP_KEY } from '@/constants/staticMaps';
+import { refreshExperienceContent, useExperienceContent } from '@/hooks/useExperienceContent';
 import PoiButton from '../PoiButton';
 
+const HOME_ICON = require('@/assets/General_Icons/ Home_icon.svg');
 
 type EraDefinition = {
   eraKey: EraKey;
@@ -376,9 +373,9 @@ function getEraBackgroundMap(year: number) {
   return MAP_1635;
 }
 
-function getIndexFromYear(year: number) {
-  const foundIndex = ERA_ITEMS.findIndex((item) => item.year === year);
-  return foundIndex >= 0 ? foundIndex : DEFAULT_INDEX;
+function getIndexFromYear(items: TimelineEraItem[], year: number, fallbackIndex: number) {
+  const foundIndex = items.findIndex((item) => item.year === year);
+  return foundIndex >= 0 ? foundIndex : fallbackIndex;
 }
 
 
@@ -395,6 +392,7 @@ export default function TimelineScreen({
   const [guideModalVisible, setGuideModalVisible] = useState(false);
   const [hasShownGuideIntro, setHasShownGuideIntro] = useState(false);
   const [showGuideIntro, setShowGuideIntro] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
 
   const confirmEndJourney = useCallback(() => {
     resetExperience();
@@ -402,26 +400,61 @@ export default function TimelineScreen({
     router.replace('/GuideScreen');
   }, [resetExperience, router]);
 
-  const relevantYears = activeGuide ? GUIDE_LENS[activeGuide] ?? [] : [];
-  const timelineItems = ERA_ITEMS.map((item) => ({
-    ...item,
-    isRelevant: relevantYears.includes(item.year),
-  }));
-  
-  console.log("activeGuide", activeGuide)
+  const showRefreshMessage = useCallback((message: string) => {
+    setRefreshMessage(message);
+    ToastAndroid.show(message, ToastAndroid.SHORT);
+    setTimeout(() => setRefreshMessage(null), 2200);
+  }, []);
+
+  const handleAdminRefresh = useCallback(async () => {
+    showRefreshMessage('Refreshing content...');
+    const result = await refreshExperienceContent();
+
+    if (result.status === 'updated') {
+      showRefreshMessage('Content updated');
+      return;
+    }
+
+    if (result.status === 'cached') {
+      showRefreshMessage('Using cached content');
+      return;
+    }
+
+    showRefreshMessage('Wifi unavailable');
+  }, [showRefreshMessage]);
+
+  const content = useExperienceContent();
+  const relevantYears = useMemo(() => (activeGuide ? GUIDE_LENS[activeGuide] ?? [] : []), [activeGuide]);
+  const timelineItems: TimelineEraItem[] = useMemo(
+    () =>
+      content.timelineEvents.map((event) => ({
+        id: event.id,
+        year: event.year,
+        label: event.title,
+        color: event.color,
+        eraKey: event.eraKey,
+        isRelevant: relevantYears.includes(event.year),
+      })),
+    [content.timelineEvents, relevantYears]
+  );
+  const defaultIndex = useMemo(
+    () => Math.max(timelineItems.findIndex((item) => item.year === 1635), 0),
+    [timelineItems]
+  );
+
   const initialIndex = useMemo(() => {
     if (initialYear != null && !Number.isNaN(initialYear)) {
-      const foundIndex = ERA_ITEMS.findIndex((item) => item.year === initialYear);
+      const foundIndex = timelineItems.findIndex((item) => item.year === initialYear);
       if (foundIndex >= 0) return foundIndex;
     }
 
-    return DEFAULT_INDEX;
-  }, [initialYear]);
+    return defaultIndex;
+  }, [defaultIndex, initialYear, timelineItems]);
 
 
     const [selectedIndex, setSelectedIndex] = useState(initialIndex);
-    const currentItem = ERA_ITEMS[selectedIndex] ?? ERA_ITEMS[0];
-    const borderDescription = BORDER_CHANGE_BY_YEAR[currentItem.year];
+    const selectedEvent = content.timelineEvents[selectedIndex] ?? content.timelineEvents[0];
+    const borderDescription = selectedEvent?.borderChangeText;
     const guideStyle = activeGuide ? GUIDE_STYLES[activeGuide] : undefined;
     useEffect(() => {
       setSelectedIndex(initialIndex);
@@ -440,35 +473,28 @@ export default function TimelineScreen({
     const isCurrentYearRelevant = selectedItem?.isRelevant !== false;
 
 
-  const selectedEra = useMemo(() => ERA_ITEMS[selectedIndex] ?? ERA_ITEMS[0], [selectedIndex]);
+  const selectedEra = useMemo(
+    () => timelineItems[selectedIndex] ?? timelineItems[0],
+    [selectedIndex, timelineItems]
+  );
 
   useEffect(() => {
-    onTimelineYearChange?.(selectedEra.year);
-  }, [selectedEra.year, onTimelineYearChange]);
-  const selectedEraDefinition = ERA_BY_NAME[selectedEra.label] ?? {
-    name: selectedEra.label,
-    summary: selectedEra.label,
-    timeframe: '',
-    years: [selectedEra.year],
-    color: selectedEra.color ?? '#2f2b2d',
-  };
-  const selectedEraMap = useMemo(() => getEraBackgroundMap(selectedEra.year), [selectedEra.year]);
+    if (selectedEra?.year != null) onTimelineYearChange?.(selectedEra.year);
+  }, [selectedEra?.year, onTimelineYearChange]);
+  const selectedEraMap = useMemo(
+    () => MAP_BY_KEY[selectedEvent?.mapKey ?? DEFAULT_MAP_KEY],
+    [selectedEvent?.mapKey]
+  );
 
-  const targetEraKey = selectedEra.eraKey;
+  const targetEraKey = selectedEvent?.eraKey ?? selectedEra?.eraKey ?? 'golden_age';
   
-  const visibleHotspots = useMemo(() => {
-    if (targetEraKey === 'all') return [];
-
-    return Object.values(POI_DETAILS).filter((poi) =>
-      poi.eraKeys.includes(targetEraKey)
-    );
-  }, [targetEraKey]);
+  const visibleHotspots = selectedEvent?.hotspots ?? [];
 
   const [openPoiId, setOpenPoiId] = useState<string | null>(null);
   
   useEffect(() => {
     setOpenPoiId(null);
-  }, [selectedEra.year]);
+  }, [selectedEra?.year]);
 
   return (
     <View style={styles.screen}>
@@ -531,10 +557,17 @@ export default function TimelineScreen({
               <TouchableOpacity
                 style={styles.homeButton}
                 onPress={() => router.push('/GuideScreen')}
+                onLongPress={handleAdminRefresh}
+                delayLongPress={2000}
                 activeOpacity={0.85}
               >
                 <Image source={HOME_ICON} style={styles.homeIcon} contentFit="contain" />
               </TouchableOpacity>
+            {refreshMessage ? (
+              <View pointerEvents="none" style={styles.refreshToast}>
+                <Text style={styles.refreshToastText}>{refreshMessage}</Text>
+              </View>
+            ) : null}
             <TouchableOpacity
               style={styles.endJourneyButton}
               onPress={() => setEndJourneyModalVisible(true)}
@@ -564,40 +597,43 @@ export default function TimelineScreen({
                 
           <View style={{ flexDirection: 'column', gap: 20 }}>
             <View style={styles.eraCard}>
-              <Text style={[styles.eraYear, { color: selectedEra.color }]}>
-                {selectedEra.year}
+              <Text style={[styles.eraYear, { color: selectedEvent?.color ?? selectedEra?.color }]}>
+                {selectedEvent?.year ?? selectedEra?.year}
               </Text>
   
-              <Text style={styles.eraName}>{selectedEraDefinition.name}</Text>
+              <Text style={styles.eraName}>{selectedEvent?.title ?? selectedEra?.label}</Text>
   
-              {selectedEraDefinition.timeframe ? (
-                <Text style={[styles.eraTimeframe, { color: selectedEra.color }]}>
-                  {selectedEraDefinition.timeframe}
+              {selectedEvent?.timePeriod ? (
+                <Text style={[styles.eraTimeframe, { color: selectedEvent.color }]}>
+                  {selectedEvent.timePeriod}
                 </Text>
               ) : null}
   
-              <Text style={styles.eraSummary}>{selectedEraDefinition.summary}</Text>
+              <Text style={styles.eraSummary}>{selectedEvent?.summary}</Text>
             </View>
           {borderDescription && (
            <PoiButton description={borderDescription} />
             )}
           </View>
-            {visibleHotspots.map((poi) => {
-              const position = HOTSPOT_POSITIONS[poi.id];
+            {visibleHotspots.map((hotspot) => {
+              const poi = content.knowledgeById[hotspot.knowledgeId];
+              const imageSource = poi?.mainImage ?? poi?.imageUri;
+              const normalizedImageSource =
+                typeof imageSource === 'string' ? { uri: imageSource } : imageSource;
 
-              if (!position || !poi.mainImage) return null;
+              if (!poi || !normalizedImageSource) return null;
 
               return (
                 <MapHotspot
-                  key={poi.id}
-                  top={position.top}
-                  left={position.left}
-                  iconSource={HOTSPOT_ICONS[poi.iconType] ?? CULTURE_ICON}                  
+                  key={hotspot.id}
+                  top={hotspot.top}
+                  left={hotspot.left}
+                  iconSource={HOTSPOT_ICONS[hotspot.iconType] ?? CULTURE_ICON}                  
                   // iconSource={HOTSPOT_ICONS[poi.iconType]}
-                  imageSource={poi.mainImage}
-                  isOpen={openPoiId === poi.id}
+                  imageSource={normalizedImageSource}
+                  isOpen={openPoiId === hotspot.id}
                   onHotspotPress={() =>
-                    setOpenPoiId((current) => (current === poi.id ? null : poi.id))
+                    setOpenPoiId((current) => (current === hotspot.id ? null : hotspot.id))
                   }
                   // onPopupPress={() => {
                   //   console.log('Open detail page for', poi.id);
@@ -608,13 +644,13 @@ export default function TimelineScreen({
                       params: {
                         id: poi.id,
                         returnRoot: 'timeline',
-                        returnYear: String(selectedEra.year),
+                        returnYear: String(selectedEvent?.year ?? selectedEra?.year ?? 1635),
                       },
                     });
                   }}
                   titleTop={poi.titleTop}
                   yearLabel={poi.yearLabel}
-                  description={poi.summary ?? poi.description}
+                  description={hotspot.shortTextOverride ?? poi.summary ?? poi.description}
                   style={{ zIndex: 10, elevation: 10 }}
                 />
               );
@@ -643,7 +679,7 @@ export default function TimelineScreen({
               key={`timeline-${initialYear}`}
               items={timelineItems}
               activeGuide={activeGuide}
-              initialIndex={initialYear != null ? getIndexFromYear(initialYear) : DEFAULT_INDEX}
+              initialIndex={initialYear != null ? getIndexFromYear(timelineItems, initialYear, defaultIndex) : defaultIndex}
               maxGapYears={40}
               pixelsPerYear={3.8}
               minGapPixels={20}
@@ -745,6 +781,24 @@ const styles = StyleSheet.create({
   homeIcon: {
     width: 32,
     height: 32,
+  },
+
+  refreshToast: {
+    position: 'absolute',
+    top: 6,
+    left: 72,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(46, 42, 42, 0.92)',
+    zIndex: 20,
+  },
+
+  refreshToastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 18,
+    fontFamily: FontFamily.interMedium,
   },
 
   eraCard: {

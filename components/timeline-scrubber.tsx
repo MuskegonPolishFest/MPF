@@ -296,35 +296,15 @@ export function TimelineScrubber({
   };
 
   const goToPrevious = () => {
-    const nextWindowStart = Math.max(windowStartYear - windowSpanYears, minYear);
-    setWindowStartYear(nextWindowStart);
-
-    const nextWindowEnd = nextWindowStart + windowSpanYears;
-    const firstVisibleInWindow = items.findIndex(
-      (item) => item.year >= nextWindowStart && item.year <= nextWindowEnd
-    );
-
-    if (firstVisibleInWindow >= 0) {
-      selectIndex(firstVisibleInWindow);
-    }
+    selectIndex(activeIndex - 1);
   };
 
   const goToNext = () => {
-    const nextWindowStart = Math.min(windowStartYear + windowSpanYears, maxWindowStartYear);
-    setWindowStartYear(nextWindowStart);
-
-    const nextWindowEnd = nextWindowStart + windowSpanYears;
-    const firstVisibleInWindow = items.findIndex(
-      (item) => item.year >= nextWindowStart && item.year <= nextWindowEnd
-    );
-
-    if (firstVisibleInWindow >= 0) {
-      selectIndex(firstVisibleInWindow);
-    }
+    selectIndex(activeIndex + 1);
   };
 
-  const isPreviousDisabled = windowStartYear <= minYear;
-  const isNextDisabled = windowStartYear >= maxWindowStartYear;
+  const isPreviousDisabled = activeIndex <= 0;
+  const isNextDisabled = activeIndex >= items.length - 1;
 
 
   return (
@@ -361,10 +341,6 @@ export function TimelineScrubber({
                 previousItem?.isRelevant !== false;
               const segmentColor =
                 items[currentIndex]?.color ?? items[previousIndex]?.color ?? DEFAULT_ERA_COLOR;
-              const isSegmentDimmed =
-                items[currentIndex]?.isRelevant === false &&
-                items[previousIndex]?.isRelevant === false;
-                
 
 
               return (
@@ -401,7 +377,6 @@ export function TimelineScrubber({
               const markerLeft = markerXByIndex[index] ?? TRACK_HORIZONTAL_PADDING;
               const isActive = index === activeIndex;
               const showYearLabel = !isActive;
-              const isDimmed = item.isRelevant === false;
               const isRelevant = item.isRelevant !== false;
 
               return (

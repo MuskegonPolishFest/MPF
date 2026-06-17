@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 
-import { ERA_TABS, EraKey } from "../constants/contentData";
+import { ERA_TABS, EraKey, EraTab } from "../constants/contentData";
 import { ThemedText } from "@/components/themed-text";
 import { MainColors } from "@/constants/theme";
 
@@ -15,12 +15,14 @@ type Props = {
   selectedKey: EraKey;
   onSelect: (key: EraKey) => void;
   activeColor: string;
+  tabs?: EraTab[];
 };
 
 export default function EraTabBar({
   selectedKey,
   onSelect,
   activeColor,
+  tabs = ERA_TABS,
 }: Props) {
   return (
     <View style={styles.container}>
@@ -29,7 +31,7 @@ export default function EraTabBar({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {ERA_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const isSelected = selectedKey === tab.key;
 
           return (
