@@ -162,6 +162,41 @@ const borderChangeByYear = {
   1993: 'The last Soviet troops leave Poland.',
 }
 
+// Source artwork per map key. Defaults to the bundled SVGs (mirrors constants/staticMaps.ts).
+// If a rasterized PNG/WebP exists in assets/maps_raster/<filename> it is uploaded instead,
+// which renders more reliably in expo-image. Drop rasterized files there to switch formats.
+const mapsDir = path.join(rootDir, 'assets', 'maps_svg')
+const rasterMapsDir = path.join(rootDir, 'assets', 'maps_raster')
+const mapFiles = {
+  1635: '1635-Realsize.svg',
+  1699: '1699,1701,1713.svg',
+  1721: '1721.svg',
+  1772: '1772.svg',
+  1793: '1793.svg',
+  1795: '1795.svg',
+  1807: '1807.svg',
+  1815: '1815.svg',
+  1831: '1831.svg',
+  1846: '1846.svg',
+  1848: '1848.svg',
+  1867: '1867.svg',
+  1871: '1871.svg',
+  1878: '1878, 1884,1894,1904.svg',
+  1917: '1917.svg',
+  1918: '1918 - 5.svg',
+  1919: '1919-1.svg',
+  1920: '1920, 1923.svg',
+  1922: '1922-2, 1924, 1935.svg',
+  1938: '1938 -1.svg',
+  1939: '1939-2.svg',
+  1940: '1940.1942.svg',
+  1944: '1944.svg',
+  1945: '1945 - 5.svg',
+  1948: '1948, 1951, 1960, 1970, 1975, 1980, 1987.svg',
+  1989: '1989.svg',
+  1993: '1993, 2002, 2011.svg',
+}
+
 const mapFloorKeys = [
   [1635, '1635'],
   [1686, '1699'],
@@ -262,13 +297,17 @@ async function main() {
       .commit()
   }
 
+  await seedMaps()
+
   const timelineEvents = buildTimelineEvents(Object.values(POI_DETAILS), HOTSPOT_POSITIONS)
   console.log(`Seeding ${timelineEvents.length} timeline events...`)
   for (const event of timelineEvents) {
     await client.createOrReplace(event)
   }
 
-  console.log('Done. Sanity Studio should now show seeded Era, Knowledge Item, and Timeline Event documents.')
+  console.log(
+    'Done. Sanity Studio should now show seeded Era, Knowledge Item, Map, and Timeline Event documents.',
+  )
 }
 
 function uniqueEras(eraTabsByKey) {
@@ -322,7 +361,7 @@ function buildTimelineEvents(pois, positions) {
         summaryOverride: definition.summary,
         borderChangePrompt: 'What caused the border change?',
         borderChangeText: borderChangeByYear[year],
-        mapKey: mapKeyForYear(year),
+        map: {_type: 'reference', _ref: mapId(mapKeyForYear(year))},
         mapRegionLabel: definition.name,
         hotspots,
         sortOrder: definitionIndex * 100 + yearIndex,
@@ -330,6 +369,63 @@ function buildTimelineEvents(pois, positions) {
     }
   }
   return events
+}
+
+async function seedMaps() {
+  const keys = mapFloorKeys.map(([, key]) => key)
+  console.log(`Seeding ${keys.length} maps...`)
+  for (const [floorYear, key] of mapFloorKeys) {
+    const existing = await client.getDocument(mapId(key))
+    const imageRef =
+      !replaceAssets && existing?.image?.asset?._ref
+        ? existing.image.asset._ref
+        : await uploadMapImage(key)
+
+    if (!imageRef) {
+      console.warn(`Skipping map ${key}; no image asset available.`)
+      continue
+    }
+
+    await client.createOrReplace({
+      _id: mapId(key),
+      _type: 'map',
+      mapKey: key,
+      title: key,
+      image: {_type: 'image', asset: {_type: 'reference', _ref: imageRef}},
+      floorYear,
+    })
+  }
+}
+
+async function uploadMapImage(key) {
+  const filename = mapFiles[key]
+  if (!filename) {
+    console.warn(`No source file mapping for map ${key}.`)
+    return undefined
+  }
+
+  // Prefer a rasterized version (renders reliably in expo-image), fall back to the bundled SVG.
+  const base = path.parse(filename).name
+  const rasterCandidate = ['.png', '.webp', '.jpg', '.jpeg']
+    .map((ext) => path.join(rasterMapsDir, `${base}${ext}`))
+    .find((candidate) => existsSync(candidate))
+  const sourcePath = rasterCandidate || path.join(mapsDir, filename)
+
+  if (!existsSync(sourcePath)) {
+    console.warn(`Skipping map ${key}; missing file ${sourcePath}.`)
+    return undefined
+  }
+
+  console.log(`  map ${key}: uploading ${path.relative(rootDir, sourcePath)}`)
+  const asset = await client.assets.upload('image', createReadStream(sourcePath), {
+    filename: path.basename(sourcePath),
+    source: {
+      name: 'PolishTabletExperience seed',
+      id: `map-${key}`,
+      url: sourcePath,
+    },
+  })
+  return asset._id
 }
 
 async function uploadImage(imagePath, id) {
@@ -367,6 +463,10 @@ function eraId(key) {
 
 function knowledgeId(id) {
   return `seed-knowledge-${id}`
+}
+
+function mapId(key) {
+  return `seed-map-${key}`
 }
 
 function loadEnv(filePath) {
