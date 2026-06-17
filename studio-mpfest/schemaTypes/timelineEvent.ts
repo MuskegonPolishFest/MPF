@@ -1,35 +1,5 @@
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
-const mapKeys = [
-  '1635',
-  '1699',
-  '1721',
-  '1772',
-  '1793',
-  '1795',
-  '1807',
-  '1815',
-  '1831',
-  '1846',
-  '1848',
-  '1867',
-  '1871',
-  '1878',
-  '1917',
-  '1918',
-  '1919',
-  '1920',
-  '1922',
-  '1938',
-  '1939',
-  '1940',
-  '1944',
-  '1945',
-  '1948',
-  '1989',
-  '1993',
-]
-
 const iconTypes = [
   {title: 'Culture', value: 'culture'},
   {title: 'Biography', value: 'biography'},
@@ -85,10 +55,11 @@ export const timelineEvent = defineType({
       rows: 3,
     }),
     defineField({
-      name: 'mapKey',
-      title: 'Static map key',
-      type: 'string',
-      options: {list: mapKeys.map((key) => ({title: key, value: key})), layout: 'dropdown'},
+      name: 'map',
+      title: 'Background map',
+      type: 'reference',
+      to: [{type: 'map'}],
+      description: 'The map shown behind this timeline node. Create maps in the "Map" section.',
       validation: (rule) => rule.required(),
     }),
     defineField({
