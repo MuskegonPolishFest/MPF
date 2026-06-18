@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
+import YoutubePlayer from 'react-native-youtube-iframe';
 import {
   View,
   Text,
@@ -13,6 +14,7 @@ import Svg, { Path } from 'react-native-svg';
 import { MainColors, Typography } from '@/constants/theme';
 import { useVisited } from '@/components/VisitedContext';
 import { POI_DETAILS, EARLIEST_TIMELINE_YEAR_BY_ERA } from '../constants/contentData';
+import { useExperienceContent } from '@/hooks/useExperienceContent';
 
 function BackIcon({ size = 28, color = '#1C1B1F' }) {
   return (
@@ -64,9 +66,30 @@ export default function POIDetailScreen() {
   const params = useLocalSearchParams();
   const currentId = paramFirst(params.id) || DEFAULT_MAIN_ID;
   const returnParams = buildReturnParams(params);
+  const content = useExperienceContent();
 
-  const mainPoi = POI_DETAILS[currentId] || POI_DETAILS[DEFAULT_MAIN_ID];
-  const { visitedIds, markVisited } = useVisited();
+  const mainPoi =
+    content.knowledgeById[currentId] ||
+    content.knowledgeById[DEFAULT_MAIN_ID] ||
+    POI_DETAILS[currentId] ||
+    POI_DETAILS[DEFAULT_MAIN_ID];
+  const { visitedIds, mediaResetKey, markVisited } = useVisited();
+  const [mediaSize, setMediaSize] = React.useState({ width: 0, height: 0 });
+  const [videoFailed, setVideoFailed] = React.useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = React.useState(true);
+  const video = mainPoi.video?.videoId ? mainPoi.video : null;
+  const fallbackImage = mainPoi.mainImage || mainPoi.imageUri;
+
+  React.useEffect(() => {
+    setVideoFailed(false);
+    setIsVideoPlaying(true);
+  }, [
+    mainPoi.id,
+    mediaResetKey,
+    video?.videoId,
+    video?.startSeconds,
+    video?.endSeconds,
+  ]);
 
   // Record "whether the user has visited this POI before entering this POI detail page"
   // First time entering: visitedIds does not include this id, so it is false; leaving and coming back: it is true
@@ -103,8 +126,8 @@ export default function POIDetailScreen() {
   const handleClose = () => {
     const primaryEra = mainPoi.eraKeys?.[0];
     const year = primaryEra
-      ? EARLIEST_TIMELINE_YEAR_BY_ERA[primaryEra]
-      : EARLIEST_TIMELINE_YEAR_BY_ERA.all;
+      ? content.earliestTimelineYearByEra[primaryEra] ?? EARLIEST_TIMELINE_YEAR_BY_ERA[primaryEra]
+      : content.earliestTimelineYearByEra.all ?? EARLIEST_TIMELINE_YEAR_BY_ERA.all;
     router.replace({
       pathname: '/',
       params: {
@@ -116,14 +139,14 @@ export default function POIDetailScreen() {
   const relatedPois =
     (mainPoi.relatedIds || [])
       .map((id) => {
-        const poi = POI_DETAILS[id];
+        const poi = content.knowledgeById[id] || POI_DETAILS[id];
         if (!poi) return null;
         return {
           id: poi.id,
           title: poi.titleTop,
           value: poi.yearLabel,
           description: poi.summary || poi.description,
-          image: poi.mainImage,
+          image: poi.mainImage || poi.imageUri,
         };
       })
       .filter(Boolean) || [];
@@ -160,10 +183,43 @@ export default function POIDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.mainContent, contentFlex]}>
-          {/* Embedded video: use key={mediaResetKey} from useVisited() so GuideScreen reset restarts playback. */}
-          <View style={styles.imagePlaceholder}>
-            {mainPoi.mainImage ? (
-              <Image source={mainPoi.mainImage} style={styles.mainImage} contentFit="cover" />
+          <View
+            style={styles.imagePlaceholder}
+            onLayout={(event) => {
+              const { width: layoutWidth, height: layoutHeight } = event.nativeEvent.layout;
+              setMediaSize({ width: layoutWidth, height: layoutHeight });
+            }}
+          >
+            {video && !videoFailed && mediaSize.width > 0 ? (
+              <YoutubePlayer
+                key={`${mediaResetKey}-${mainPoi.id}-${video.videoId}-${video.startSeconds ?? 0}-${video.endSeconds ?? 'end'}`}
+                height={mediaSize.height}
+                width={mediaSize.width}
+                play={isVideoPlaying}
+                videoId={video.videoId}
+                initialPlayerParams={{
+                  start: video.startSeconds ?? 0,
+                  end: video.endSeconds,
+                  controls: true,
+                  modestbranding: true,
+                  rel: false,
+                }}
+                webViewStyle={styles.youtubeWebView}
+                onError={() => setVideoFailed(true)}
+                onChangeState={(state) => {
+                  if (state === 'ended') setIsVideoPlaying(false);
+                }}
+              />
+            ) : fallbackImage ? (
+              <Image
+                source={
+                  typeof fallbackImage === 'string'
+                    ? { uri: fallbackImage }
+                    : fallbackImage
+                }
+                style={styles.mainImage}
+                contentFit="cover"
+              />
             ) : null}
           </View>
           <View style={styles.titleRow}>
@@ -198,7 +254,11 @@ export default function POIDetailScreen() {
             >
               <View style={styles.relatedImagePlaceholder}>
                 {item.image ? (
-                  <Image source={item.image} style={styles.relatedImage} contentFit="cover" />
+                  <Image
+                    source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                    style={styles.relatedImage}
+                    contentFit="cover"
+                  />
                 ) : null}
               </View>
               <View style={styles.relatedCardContent}>
@@ -275,6 +335,9 @@ const styles = StyleSheet.create({
   mainImage: {
     width: '100%',
     height: '100%',
+  },
+  youtubeWebView: {
+    backgroundColor: MainColors.primaryBlack,
   },
   titleRow: {
     flexDirection: 'row',

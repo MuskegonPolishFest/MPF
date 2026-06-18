@@ -4,6 +4,7 @@ import {
   EraKey,
   EARLIEST_TIMELINE_YEAR_BY_ERA,
 } from '@/constants/contentData';
+import { useExperienceContent } from '@/hooks/useExperienceContent';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
@@ -19,7 +20,9 @@ const ERA_KEYS: EraKey[] = [
   'independence',
   'rebirth',
   'ww2',
+  'liberation',
   'communist',
+  'growingDiscontent',
   'modern',
 ];
 
@@ -39,6 +42,7 @@ export default function IndexScreen() {
   const [view, setView] = useState<HomeView>('timeline');
   const [contentEra, setContentEra] = useState<EraKey>('all');
   const [timelineYear, setTimelineYear] = useState<number | undefined>(1635);
+  const content = useExperienceContent();
 
   const timelineOpacity = useRef(new Animated.Value(1)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
@@ -47,8 +51,12 @@ export default function IndexScreen() {
   const contentEntryYearRef = useRef<number | undefined>(1635);
   const contentEntryEraRef = useRef<EraKey>('all');
 
-  const isEraKey = (value: string): value is EraKey =>
-    ERA_KEYS.includes(value as EraKey);
+  const isEraKey = useCallback(
+    (value: string): value is EraKey =>
+      ERA_KEYS.includes(value as EraKey) ||
+      content.eraTabs.some((tab) => tab.key === value),
+    [content.eraTabs]
+  );
 
   const switchView = useCallback(
     (newView: HomeView, era?: EraKey) => {
@@ -101,7 +109,7 @@ export default function IndexScreen() {
 
     switchView('content', era);
     queueMicrotask(() => router.setParams({ openContentEra: undefined }));
-  }, [params.openContentEra, router, switchView]);
+  }, [isEraKey, params.openContentEra, router, switchView]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -133,6 +141,7 @@ export default function IndexScreen() {
               }
             } else {
               const fallbackYear =
+                content.earliestTimelineYearByEra[currentEra] ??
                 EARLIEST_TIMELINE_YEAR_BY_ERA[currentEra] ??
                 contentEntryYearRef.current ??
                 1635;
