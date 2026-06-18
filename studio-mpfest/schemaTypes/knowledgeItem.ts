@@ -44,6 +44,58 @@ export const knowledgeItem = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      name: 'video',
+      title: 'Detail page YouTube clip',
+      type: 'object',
+      description: 'Optional video for the detail page. The image remains the fallback thumbnail.',
+      fields: [
+        defineField({
+          name: 'youtubeUrl',
+          title: 'YouTube URL',
+          type: 'url',
+          validation: (rule) =>
+            rule
+              .uri({scheme: ['http', 'https']})
+              .custom((url) => {
+                if (!url) return 'YouTube URL is required when adding a video clip.'
+
+                try {
+                  const parsed = new URL(url)
+                  const hostname = parsed.hostname.replace(/^www\./, '').replace(/^m\./, '')
+                  const isYouTube =
+                    hostname === 'youtube.com' ||
+                    hostname === 'youtube-nocookie.com' ||
+                    hostname === 'youtu.be'
+
+                  return isYouTube || 'Must be a YouTube URL.'
+                } catch {
+                  return 'Must be a valid YouTube URL.'
+                }
+              }),
+        }),
+        defineField({
+          name: 'startSeconds',
+          title: 'Start time (seconds)',
+          type: 'number',
+          initialValue: 0,
+          validation: (rule) => rule.integer().min(0),
+        }),
+        defineField({
+          name: 'endSeconds',
+          title: 'End time (seconds)',
+          type: 'number',
+          validation: (rule) =>
+            rule.integer().min(0).custom((endSeconds, context) => {
+              const parent = context.parent as {startSeconds?: number} | undefined
+              const startSeconds = parent?.startSeconds
+
+              if (endSeconds == null || startSeconds == null) return true
+              return endSeconds > startSeconds || 'End time must be greater than start time.'
+            }),
+        }),
+      ],
+    }),
+    defineField({
       name: 'facts',
       title: 'Facts',
       type: 'array',

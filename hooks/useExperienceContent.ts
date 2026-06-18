@@ -13,6 +13,7 @@ import {
 import {HOTSPOT_POSITIONS} from '@/constants/hotspotPositions';
 import {EraColors, EraTabTheme} from '@/constants/theme';
 import {DEFAULT_MAP_KEY, MAP_BY_KEY, MapKey, getMapKeyForYear} from '@/constants/staticMaps';
+import {normalizeYouTubeClip, YouTubeClip} from '@/utils/youtube';
 
 export type HotspotIconType = 'culture' | 'biography' | 'history' | 'science';
 
@@ -38,6 +39,7 @@ export type NormalizedKnowledgeItem = {
   imageUri?: string | number;
   mainImage?: string | number;
   imageAlt?: string;
+  video?: YouTubeClip;
   relatedIds: string[];
   sortOrder: number;
 };
@@ -257,6 +259,11 @@ type SanityKnowledgeItem = {
   detailText?: string;
   imageUrl?: string;
   imageAlt?: string;
+  video?: {
+    youtubeUrl?: string;
+    startSeconds?: number;
+    endSeconds?: number;
+  };
   facts?: string[];
   sortOrder?: number;
   eras?: Array<{eraKey?: EraKeyNoAll}>;
@@ -334,6 +341,7 @@ const EXPERIENCE_CONTENT_QUERY = `
         detailText,
         "imageUrl": image.asset->url,
         imageAlt,
+        video,
         facts,
         sortOrder,
         eras[]->{eraKey},
@@ -349,6 +357,7 @@ const EXPERIENCE_CONTENT_QUERY = `
     detailText,
     "imageUrl": image.asset->url,
     imageAlt,
+    video,
     facts,
     sortOrder,
     eras[]->{eraKey},
@@ -551,6 +560,7 @@ function normalizeSanityKnowledge(item: SanityKnowledgeItem, index: number): Nor
     imageUri: item.imageUrl,
     mainImage: item.imageUrl,
     imageAlt: item.imageAlt,
+    video: normalizeYouTubeClip(item.video),
     relatedIds: (item.relatedKnowledge || [])
       .map((related) => related._id)
       .filter((id): id is string => Boolean(id)),
