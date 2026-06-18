@@ -1,6 +1,7 @@
 import React from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
+import YoutubePlayer from 'react-native-youtube-iframe';
 import {
   View,
   Text,
@@ -72,7 +73,23 @@ export default function POIDetailScreen() {
     content.knowledgeById[DEFAULT_MAIN_ID] ||
     POI_DETAILS[currentId] ||
     POI_DETAILS[DEFAULT_MAIN_ID];
-  const { visitedIds, markVisited } = useVisited();
+  const { visitedIds, mediaResetKey, markVisited } = useVisited();
+  const [mediaSize, setMediaSize] = React.useState({ width: 0, height: 0 });
+  const [videoFailed, setVideoFailed] = React.useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = React.useState(true);
+  const video = mainPoi.video?.videoId ? mainPoi.video : null;
+  const fallbackImage = mainPoi.mainImage || mainPoi.imageUri;
+
+  React.useEffect(() => {
+    setVideoFailed(false);
+    setIsVideoPlaying(true);
+  }, [
+    mainPoi.id,
+    mediaResetKey,
+    video?.videoId,
+    video?.startSeconds,
+    video?.endSeconds,
+  ]);
 
   // Record "whether the user has visited this POI before entering this POI detail page"
   // First time entering: visitedIds does not include this id, so it is false; leaving and coming back: it is true
@@ -166,14 +183,39 @@ export default function POIDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.mainContent, contentFlex]}>
-          {/* Embedded video: use key={mediaResetKey} from useVisited() so GuideScreen reset restarts playback. */}
-          <View style={styles.imagePlaceholder}>
-            {mainPoi.mainImage || mainPoi.imageUri ? (
+          <View
+            style={styles.imagePlaceholder}
+            onLayout={(event) => {
+              const { width: layoutWidth, height: layoutHeight } = event.nativeEvent.layout;
+              setMediaSize({ width: layoutWidth, height: layoutHeight });
+            }}
+          >
+            {video && !videoFailed && mediaSize.width > 0 ? (
+              <YoutubePlayer
+                key={`${mediaResetKey}-${mainPoi.id}-${video.videoId}-${video.startSeconds ?? 0}-${video.endSeconds ?? 'end'}`}
+                height={mediaSize.height}
+                width={mediaSize.width}
+                play={isVideoPlaying}
+                videoId={video.videoId}
+                initialPlayerParams={{
+                  start: video.startSeconds ?? 0,
+                  end: video.endSeconds,
+                  controls: true,
+                  modestbranding: true,
+                  rel: false,
+                }}
+                webViewStyle={styles.youtubeWebView}
+                onError={() => setVideoFailed(true)}
+                onChangeState={(state) => {
+                  if (state === 'ended') setIsVideoPlaying(false);
+                }}
+              />
+            ) : fallbackImage ? (
               <Image
                 source={
-                  typeof (mainPoi.mainImage || mainPoi.imageUri) === 'string'
-                    ? { uri: mainPoi.mainImage || mainPoi.imageUri }
-                    : mainPoi.mainImage || mainPoi.imageUri
+                  typeof fallbackImage === 'string'
+                    ? { uri: fallbackImage }
+                    : fallbackImage
                 }
                 style={styles.mainImage}
                 contentFit="cover"
@@ -293,6 +335,9 @@ const styles = StyleSheet.create({
   mainImage: {
     width: '100%',
     height: '100%',
+  },
+  youtubeWebView: {
+    backgroundColor: MainColors.primaryBlack,
   },
   titleRow: {
     flexDirection: 'row',
