@@ -7,17 +7,16 @@ import { useRouter } from "expo-router";
 import EraTabBar from "../components/EraTabBar";
 import ContentCard from "../components/ContentCard";
 import {
-  ERA_TABS,
-  MOCK_CARDS,
   EraKey,
 } from "../constants/contentData";
 
 import { ThemedText } from "@/components/themed-text";
 import { EraTabTheme, MainColors } from "@/constants/theme";
+import { NormalizedKnowledgeItem, useExperienceContent } from "@/hooks/useExperienceContent";
 
 type ColumnItem = {
-  top?: (typeof MOCK_CARDS)[number];
-  bottom?: (typeof MOCK_CARDS)[number];
+  top?: NormalizedKnowledgeItem;
+  bottom?: NormalizedKnowledgeItem;
 };
 
 type ContentScreenProps = {
@@ -30,6 +29,7 @@ export default function ContentScreen({
   initialEra = "all",
 }: ContentScreenProps) {
   const router = useRouter();
+  const content = useExperienceContent();
   const [selectedEra, setSelectedEra] = useState<EraKey>(initialEra);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function ContentScreen({
   const currentTitle =
     selectedEra === "all"
       ? "Title"
-      : ERA_TABS.find((tab) => tab.key === selectedEra)?.label ?? "Title";
+      : content.eraTabs.find((tab) => tab.key === selectedEra)?.label ?? "Title";
 
   const activeEraColor =
     selectedEra === "all"
@@ -48,9 +48,9 @@ export default function ContentScreen({
         MainColors.pointRed;
 
   const filteredCards = useMemo(() => {
-    if (selectedEra === "all") return MOCK_CARDS;
-    return MOCK_CARDS.filter((card) => card.eraKeys.includes(selectedEra));
-  }, [selectedEra]);
+    if (selectedEra === "all") return content.knowledgeItems;
+    return content.knowledgeItems.filter((card) => card.eraKeys.includes(selectedEra));
+  }, [content.knowledgeItems, selectedEra]);
 
   const columns: ColumnItem[] = useMemo(() => {
     const result: ColumnItem[] = [];
@@ -66,6 +66,7 @@ export default function ContentScreen({
         selectedKey={selectedEra}
         onSelect={setSelectedEra}
         activeColor={activeEraColor}
+        tabs={content.eraTabs}
       />
 
       <ThemedText
