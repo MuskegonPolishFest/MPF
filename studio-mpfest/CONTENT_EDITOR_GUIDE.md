@@ -52,10 +52,15 @@ Important fields:
 - `Full detail text`: longer text on the detail page.
 - `Image`: main image for card/detail.
 - `Image alt text`: plain description of the image.
+- `Detail page YouTube clip`: optional video shown at the top of the detail page.
+- `YouTube URL`: normal YouTube watch/share URL for the optional video.
+- `Start time (seconds)` and `End time (seconds)`: optional clip range. Use total seconds.
 - `Facts`: optional supporting facts.
 - `Related eras`: which era filters this item belongs to.
 - `Related content`: other Knowledge Items shown on the detail page.
 - `Sort order`: controls card order.
+
+The `Image` and `Image alt text` are still required even when a YouTube clip is added. The app uses the image if the video cannot play.
 
 ### Timeline Event
 
@@ -109,6 +114,25 @@ Important fields:
 4. Click **Publish**.
 5. Check the detail page in the app.
 
+### Add A YouTube Clip To A Detail Page
+
+1. Find the video on YouTube.
+2. Check whether it can be embedded:
+   - Click **Share**.
+   - Click **Embed**.
+   - If the preview says `Playback on other websites has been disabled by the video owner`, do not use that video.
+3. Open the relevant **Knowledge Item** in Sanity.
+4. Go to `Detail page YouTube clip`.
+5. Paste the YouTube link into `YouTube URL`.
+6. Enter `Start time (seconds)` and `End time (seconds)`.
+   - Use total seconds, not minutes and seconds.
+   - Example: `5:06` is `306` seconds.
+   - Example: `5:06` to `5:45` is start `306`, end `345`.
+7. Click **Publish**.
+8. Restart or reload the tablet app and test the detail page.
+
+If `End time (seconds)` is left blank, the video starts at `Start time (seconds)` and continues playing.
+
 ### Add A Hotspot To A Timeline Event
 
 1. Open **Timeline Event**.
@@ -136,6 +160,19 @@ Important fields:
 7. Publish the Era, Knowledge Items, and Timeline Events.
 8. Restart or reload the tablet app.
 
+## YouTube Troubleshooting
+
+Some YouTube videos cannot play inside the tablet app because the video owner has disabled embedding. The app cannot override this YouTube setting.
+
+If a video is blocked:
+
+- Try a different upload of the same footage.
+- Prefer a video that shows a working preview after clicking **Share** then **Embed**.
+- Use an owned or approved video source when possible.
+- Do not rely on the **Watch on YouTube** link for the exhibit tablet flow.
+
+If a YouTube clip fails, the detail page should still show the required image fallback.
+
 ## Rules During Festival Prep
 
 - Always click **Publish**. Drafts do not show in the tablet app.
@@ -144,4 +181,7 @@ Important fields:
 - Hotspot positions are percentages from `0` to `100`.
 - Do not delete seeded documents during festival prep. Edit or unpublish instead.
 - Keep `Short card summary` short. Long text belongs in `Full detail text`.
+- Always test YouTube clips on the tablet detail page after publishing.
+- Prefer YouTube videos that show a working embed preview.
+- Do not rely on the **Watch on YouTube** link for the exhibit tablet flow.
 - If you are unsure whether a change is safe, make the edit as a draft and ask before publishing.
