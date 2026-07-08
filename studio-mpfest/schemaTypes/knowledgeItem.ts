@@ -57,7 +57,7 @@ export const knowledgeItem = defineType({
             rule
               .uri({scheme: ['http', 'https']})
               .custom((url) => {
-                if (!url) return 'YouTube URL is required when adding a video clip.'
+                if (!url) return true
 
                 try {
                   const parsed = new URL(url)

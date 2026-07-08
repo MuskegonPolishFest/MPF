@@ -22,7 +22,20 @@ export const era = defineType({
       title: 'Stable era key',
       type: 'string',
       options: {list: eraKeys, layout: 'dropdown'},
-      validation: (rule) => rule.required(),
+      validation: (rule) =>
+        rule.required().custom(async (eraKey, context) => {
+          if (!eraKey) return true
+
+          const id = context.document?._id?.replace(/^drafts\./, '')
+          const draftId = id ? `drafts.${id}` : undefined
+          const client = context.getClient({apiVersion: '2026-06-07'})
+          const duplicateCount = await client.fetch(
+            `count(*[_type == "era" && eraKey == $eraKey && !(_id in [$id, $draftId])])`,
+            {eraKey, id, draftId}
+          )
+
+          return duplicateCount === 0 || 'Stable era key must be unique. Edit the existing Era instead.'
+        }),
     }),
     defineField({
       name: 'tabLabel',

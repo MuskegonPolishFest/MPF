@@ -7,7 +7,7 @@ import { TimelineItem, TimelineScrubber } from '@/components/timeline-scrubber';
 import MapHotspot from '@/components/MapHotspot';
 import { EndJourneyFullScreen } from '@/components/EndJourneyFullScreen';
 import { useVisited } from '@/components/VisitedContext';
-import { EraColors, EraTabTheme, QuizResultColors, FontFamily, MainColors } from '@/constants/theme';
+import { QuizResultColors, FontFamily, MainColors } from '@/constants/theme';
 import { EraKey } from '@/constants/contentData';
 import GuideCard from '../GuideCard';
 import LegendCard from '../LegendCard';
@@ -19,6 +19,7 @@ import PoiButton from '../PoiButton';
 
 const HOME_ICON = require('@/assets/General_Icons/ Home_icon.svg');
 
+/* Legacy hardcoded era timeline data moved to useExperienceContent().
 type EraDefinition = {
   eraKey: EraKey;
   name: string;
@@ -146,17 +147,17 @@ const ERA_ITEMS: TimelineEraItem[] = ERA_DEFINITIONS.flatMap((era) =>
     eraKey: era.eraKey,
   }))
 );
+*/
 
-const ERA_BY_NAME = Object.fromEntries(
-  ERA_DEFINITIONS.map((era) => [era.name, era])
-) as Record<string, EraDefinition>;
+type TimelineScreenProps = {
+  onPressContent?: (era: EraKey) => void;
+  onTimelineYearChange?: (year: number) => void;
+  initialYear?: number;
+  activeGuide?: string;
+};
 
-const DEFAULT_INDEX = Math.max(
-  ERA_ITEMS.findIndex((item) => item.year === 1635),
-  0
-);
+type TimelineEraItem = TimelineItem & { eraKey: EraKey };
 
-const RIGHT_ALIGNED_MAP_POSITION = { right: 0, top: '32%' };
 const LEFT_BACKGROUND_VECTOR = require('@/assets/maps_svg/background-vector.svg');
 
 const CULTURE_ICON = require('@/assets/POI_Icon/POI_Culture.svg');
@@ -268,6 +269,7 @@ const GUIDE_STYLES: Record<
   },
 };
 
+/* Legacy fallback border text moved to Sanity CMS.
 const BORDER_CHANGE_BY_YEAR: Record<number, string> = {
   1635: 'Sweden signed the Treaty of Stuhmsdorf, returning territories to the Polish–Lithuanian Commonwealth.',
   1653: 'Internal conflicts and wars begin, marking the decline of Poland’s strength.',
@@ -304,6 +306,7 @@ const BORDER_CHANGE_BY_YEAR: Record<number, string> = {
   1991: 'Communism ends – Poland becomes a democracy.',
   1993: 'The last Soviet troops leave Poland.',
 };
+*/
 
 
 function getIndexFromYear(items: TimelineEraItem[], year: number, fallbackIndex: number) {
