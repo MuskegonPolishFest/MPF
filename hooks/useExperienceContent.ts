@@ -92,14 +92,14 @@ const CONTENT_CACHE_KEY = 'mpfest-experience-content-cache-v1';
 
 const BORDER_CHANGE_PROMPT = 'What caused the border change?';
 
-const FALLBACK_TIMELINE_DEFINITIONS: Array<{
+const FALLBACK_TIMELINE_DEFINITIONS: {
   eraKey: EraKeyNoAll;
   name: string;
   summary: string;
   timeframe: string;
   years: number[];
   color: string;
-}> = [
+}[] = [
   {
     eraKey: 'golden_age',
     name: EraTabTheme.golden_age.label,
@@ -266,8 +266,8 @@ type SanityKnowledgeItem = {
   };
   facts?: string[];
   sortOrder?: number;
-  eras?: Array<{eraKey?: EraKeyNoAll}>;
-  relatedKnowledge?: Array<{_id?: string}>;
+  eras?: {eraKey?: EraKeyNoAll}[];
+  relatedKnowledge?: {_id?: string}[];
 };
 
 type SanityTimelineEvent = {
@@ -287,7 +287,7 @@ type SanityTimelineEvent = {
   mapRegionLabel?: string;
   sortOrder?: number;
   era?: SanityEra;
-  hotspots?: Array<{
+  hotspots?: {
     _key?: string;
     hotspotId?: string;
     placeName?: string;
@@ -297,7 +297,7 @@ type SanityTimelineEvent = {
     yPercent?: number;
     shortTextOverride?: string;
     knowledge?: SanityKnowledgeItem;
-  }>;
+  }[];
 };
 
 const EXPERIENCE_CONTENT_QUERY = `
