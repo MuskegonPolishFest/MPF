@@ -568,12 +568,24 @@ function normalizeSanityKnowledge(item: SanityKnowledgeItem, index: number): Nor
   };
 }
 
+function dedupeErasByKey(eras: NormalizedEra[]) {
+  const seen = new Set<EraKeyNoAll>();
+
+  return eras
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .filter((era) => {
+      if (seen.has(era.eraKey)) return false;
+      seen.add(era.eraKey);
+      return true;
+    });
+}
+
 function normalizeSanityContent(payload: SanityPayload): ExperienceContent | null {
   if (!payload.eras?.length || !payload.timelineEvents?.length || !payload.knowledgeItems?.length) {
     return null;
   }
 
-  const eras = payload.eras
+  const normalizedEras = payload.eras
     .filter((era): era is SanityEra & {eraKey: EraKeyNoAll} => Boolean(era.eraKey))
     .map((era, index) => ({
       eraKey: era.eraKey,
@@ -584,6 +596,7 @@ function normalizeSanityContent(payload: SanityPayload): ExperienceContent | nul
       color: getEraColor(era.eraKey),
       sortOrder: era.sortOrder ?? index,
     }));
+  const eras = dedupeErasByKey(normalizedEras);
 
   const eraByKey = Object.fromEntries(eras.map((era) => [era.eraKey, era]));
   const knowledgeItems = payload.knowledgeItems
@@ -643,15 +656,14 @@ function normalizeSanityContent(payload: SanityPayload): ExperienceContent | nul
         hotspots,
       };
     })
-    .filter((event): event is NormalizedTimelineEvent => Boolean(event));
+    .filter((event): event is NormalizedTimelineEvent => Boolean(event))
+    .sort((a, b) => a.year - b.year || a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
 
   if (!eras.length || !timelineEvents.length || !knowledgeItems.length) return null;
 
   const eraTabs = [
     {key: 'all' as EraKey, label: 'All'},
-    ...eras
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((era) => ({key: era.eraKey as EraKey, label: era.tabLabel})),
+    ...eras.map((era) => ({key: era.eraKey as EraKey, label: era.tabLabel})),
   ];
 
   const earliestTimelineYearByEra = timelineEvents.reduce<Record<EraKey, number>>(
