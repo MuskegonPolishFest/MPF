@@ -58,3 +58,11 @@ The `preview` profile creates an installable APK for internal distribution.
 For Studio setup, deploy, and seed operations, see [studio-mpfest/README.md](./studio-mpfest/README.md).
 
 For content intern workflows, see [studio-mpfest/CONTENT_EDITOR_GUIDE.md](./studio-mpfest/CONTENT_EDITOR_GUIDE.md).
+
+## Tablet Provisioning
+
+For per-tablet setup (screen sleep, app pinning, volunteer instructions), see [TABLET_SETUP_GUIDE.md](./TABLET_SETUP_GUIDE.md).
+
+## Annual Updates
+
+For bringing this project back next year (content refresh, rebuild, redeploy, credential rotation), see [ANNUAL_UPDATE_GUIDE.md](./ANNUAL_UPDATE_GUIDE.md).
