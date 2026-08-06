@@ -9,6 +9,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { VisitedProvider } from '@/components/VisitedContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -36,7 +37,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <VisitedProvider>
-          <Stack initialRouteName="GuideScreen" screenOptions={{ headerShown: false, animation: 'fade' }} />
+          <ErrorBoundary>
+            <Stack initialRouteName="GuideScreen" screenOptions={{ headerShown: false, animation: 'fade' }} />
+          </ErrorBoundary>
         </VisitedProvider>
         <StatusBar style="auto" />
       </ThemeProvider>
