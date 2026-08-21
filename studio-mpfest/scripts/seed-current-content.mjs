@@ -162,6 +162,8 @@ const borderChangeByYear = {
   1993: 'The last Soviet troops leave Poland.',
 }
 
+const poiIconDir = path.join(rootDir, 'assets', 'POI_Icon')
+
 // Source artwork per map key. Defaults to the bundled SVGs (mirrors constants/staticMaps.ts).
 // If a rasterized PNG/WebP exists in assets/maps_raster/<filename> it is uploaded instead,
 // which renders more reliably in expo-image. Drop rasterized files there to switch formats.
@@ -196,6 +198,33 @@ const mapFiles = {
   1989: '1989.svg',
   1993: '1993, 2002, 2011.svg',
 }
+
+const hotspotCategoryDefinitions = [
+  {
+    value: 'culture',
+    title: 'Culture',
+    description: 'Highlights cultural traditions, art, and identity.',
+    iconFile: 'POI_Culture.svg',
+  },
+  {
+    value: 'biography',
+    title: 'Biography',
+    description: 'Introduces important people connected to this era.',
+    iconFile: 'POI_Biography.svg',
+  },
+  {
+    value: 'history',
+    title: 'History',
+    description: 'Explains major historical moments and turning points.',
+    iconFile: 'POI_History.svg',
+  },
+  {
+    value: 'science',
+    title: 'Science',
+    description: 'Shows discoveries, inventions, and scientific impact.',
+    iconFile: 'POI_Science.svg',
+  },
+]
 
 const mapFloorKeys = [
   [1635, '1635'],
@@ -283,6 +312,8 @@ async function main() {
     })
   }
 
+  await seedHotspotCategories()
+
   console.log('Linking related knowledge items...')
   for (const poi of Object.values(POI_DETAILS)) {
     await client
@@ -342,7 +373,7 @@ function buildTimelineEvents(pois, positions) {
             hotspotId: poi.id,
             placeName: poi.titleTop,
             metadata: poi.yearLabel || '',
-            iconType: 'culture',
+            iconType: {_type: 'reference', _ref: hotspotCategoryId('culture')},
             xPercent: toPercent(position.left, HOTSPOT_BASE_WIDTH),
             yPercent: toPercent(position.top, HOTSPOT_BASE_HEIGHT),
             knowledge: {_type: 'reference', _ref: knowledgeId(poi.id)},
@@ -393,6 +424,29 @@ async function seedMaps() {
       title: key,
       image: {_type: 'image', asset: {_type: 'reference', _ref: imageRef}},
       floorYear,
+    })
+  }
+}
+
+async function seedHotspotCategories() {
+  console.log(`Seeding ${hotspotCategoryDefinitions.length} hotspot categories...`)
+  for (const [index, category] of hotspotCategoryDefinitions.entries()) {
+    const id = hotspotCategoryId(category.value)
+    const existing = await client.getDocument(id)
+    const iconPath = path.join(poiIconDir, category.iconFile)
+    const iconRef =
+      !replaceAssets && existing?.icon?.asset?._ref
+        ? existing.icon.asset._ref
+        : await uploadImage(iconPath, category.value)
+
+    await client.createOrReplace({
+      _id: id,
+      _type: 'hotspotCategory',
+      title: category.title,
+      value: category.value,
+      description: category.description,
+      icon: iconRef ? {_type: 'image', asset: {_type: 'reference', _ref: iconRef}} : undefined,
+      sortOrder: index,
     })
   }
 }
@@ -467,6 +521,10 @@ function knowledgeId(id) {
 
 function mapId(key) {
   return `seed-map-${key}`
+}
+
+function hotspotCategoryId(value) {
+  return `seed-hotspot-category-${value}`
 }
 
 function loadEnv(filePath) {
