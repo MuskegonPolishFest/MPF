@@ -15,7 +15,12 @@ import {EraColors, EraTabTheme} from '@/constants/theme';
 import {DEFAULT_MAP_KEY, MAP_BY_KEY, MapKey, getMapKeyForYear} from '@/constants/staticMaps';
 import {normalizeYouTubeClip, YouTubeClip} from '@/utils/youtube';
 
-export type HotspotIconType = 'culture' | 'biography' | 'history' | 'science';
+export type NormalizedHotspotCategory = {
+  id: string;
+  title: string;
+  description?: string;
+  iconSource: string | number;
+};
 
 export type NormalizedEra = {
   eraKey: EraKeyNoAll;
@@ -50,7 +55,7 @@ export type NormalizedHotspot = {
   metadata?: string;
   top: number | `${number}%`;
   left: number | `${number}%`;
-  iconType: HotspotIconType;
+  category: NormalizedHotspotCategory;
   knowledgeId: string;
   shortTextOverride?: string;
 };
@@ -79,6 +84,7 @@ export type ExperienceContent = {
   knowledgeItems: NormalizedKnowledgeItem[];
   knowledgeById: Record<string, NormalizedKnowledgeItem>;
   earliestTimelineYearByEra: Record<EraKey, number>;
+  categories: NormalizedHotspotCategory[];
   source: 'fallback' | 'sanity' | 'device-cache';
 };
 
@@ -91,6 +97,36 @@ const SANITY_QUERY_URL = `https://${SANITY_PROJECT_ID}.api.sanity.io/${SANITY_AP
 const CONTENT_CACHE_KEY = 'mpfest-experience-content-cache-v1';
 
 const BORDER_CHANGE_PROMPT = 'What caused the border change?';
+
+// Bundled icons used only when there's no network access to Sanity (offline fallback),
+// or when a hotspot's category reference fails to resolve.
+const FALLBACK_CATEGORIES: NormalizedHotspotCategory[] = [
+  {
+    id: 'culture',
+    title: 'Culture',
+    description: 'Highlights cultural traditions, art, and identity.',
+    iconSource: require('@/assets/POI_Icon/POI_Culture.svg'),
+  },
+  {
+    id: 'biography',
+    title: 'Biography',
+    description: 'Introduces important people connected to this era.',
+    iconSource: require('@/assets/POI_Icon/POI_Biography.svg'),
+  },
+  {
+    id: 'history',
+    title: 'History',
+    description: 'Explains major historical moments and turning points.',
+    iconSource: require('@/assets/POI_Icon/POI_History.svg'),
+  },
+  {
+    id: 'science',
+    title: 'Science',
+    description: 'Shows discoveries, inventions, and scientific impact.',
+    iconSource: require('@/assets/POI_Icon/POI_Science.svg'),
+  },
+];
+const DEFAULT_FALLBACK_CATEGORY = FALLBACK_CATEGORIES[0];
 
 const FALLBACK_TIMELINE_DEFINITIONS: {
   eraKey: EraKeyNoAll;
@@ -239,6 +275,14 @@ type SanityPayload = {
   eras?: SanityEra[];
   timelineEvents?: SanityTimelineEvent[];
   knowledgeItems?: SanityKnowledgeItem[];
+  categories?: SanityHotspotCategory[];
+};
+
+type SanityHotspotCategory = {
+  _id?: string;
+  title?: string;
+  iconUrl?: string;
+  description?: string;
 };
 
 type SanityEra = {
@@ -292,7 +336,7 @@ type SanityTimelineEvent = {
     hotspotId?: string;
     placeName?: string;
     metadata?: string;
-    iconType?: HotspotIconType;
+    iconType?: SanityHotspotCategory;
     xPercent?: number;
     yPercent?: number;
     shortTextOverride?: string;
@@ -329,7 +373,12 @@ const EXPERIENCE_CONTENT_QUERY = `
       hotspotId,
       placeName,
       metadata,
-      iconType,
+      iconType->{
+        _id,
+        title,
+        "iconUrl": icon.asset->url,
+        description
+      },
       xPercent,
       yPercent,
       shortTextOverride,
@@ -362,6 +411,12 @@ const EXPERIENCE_CONTENT_QUERY = `
     sortOrder,
     eras[]->{eraKey},
     relatedKnowledge[]->{_id}
+  },
+  "categories": *[_type == "hotspotCategory"] | order(sortOrder asc) {
+    _id,
+    title,
+    "iconUrl": icon.asset->url,
+    description
   }
 }
 `;
@@ -417,6 +472,8 @@ async function readCachedContent(): Promise<ExperienceContent | null> {
 
     return {
       ...parsed,
+      // Older cache files (written before categories were introduced) won't have this field.
+      categories: parsed.categories?.length ? parsed.categories : FALLBACK_CATEGORIES,
       source: 'device-cache',
     };
   } catch {
@@ -502,7 +559,7 @@ function buildFallbackContent(): ExperienceContent {
                 id: item.id,
                 top: position.top,
                 left: position.left,
-                iconType: 'culture' as HotspotIconType,
+                category: DEFAULT_FALLBACK_CATEGORY,
                 knowledgeId: item.id,
               }
             : null;
@@ -533,6 +590,7 @@ function buildFallbackContent(): ExperienceContent {
     knowledgeItems,
     knowledgeById,
     earliestTimelineYearByEra: EARLIEST_TIMELINE_YEAR_BY_ERA,
+    categories: FALLBACK_CATEGORIES,
     source: 'fallback',
   };
 }
@@ -568,6 +626,23 @@ function normalizeSanityKnowledge(item: SanityKnowledgeItem, index: number): Nor
   };
 }
 
+function normalizeSanityCategory(category: SanityHotspotCategory): NormalizedHotspotCategory | null {
+  if (!category._id || !category.title) return null;
+
+  return {
+    id: category._id,
+    title: category.title,
+    description: category.description,
+    iconSource: category.iconUrl ?? DEFAULT_FALLBACK_CATEGORY.iconSource,
+  };
+}
+
+function normalizeSanityHotspotCategory(
+  category: SanityHotspotCategory | undefined
+): NormalizedHotspotCategory {
+  return normalizeSanityCategory(category || {}) ?? DEFAULT_FALLBACK_CATEGORY;
+}
+
 function dedupeErasByKey(eras: NormalizedEra[]) {
   const seen = new Set<EraKeyNoAll>();
 
@@ -599,6 +674,10 @@ function normalizeSanityContent(payload: SanityPayload): ExperienceContent | nul
   const eras = dedupeErasByKey(normalizedEras);
 
   const eraByKey = Object.fromEntries(eras.map((era) => [era.eraKey, era]));
+  const normalizedCategories = (payload.categories || [])
+    .map((category) => normalizeSanityCategory(category))
+    .filter((category): category is NormalizedHotspotCategory => Boolean(category));
+  const categories = normalizedCategories.length ? normalizedCategories : FALLBACK_CATEGORIES;
   const knowledgeItems = payload.knowledgeItems
     .map((item, index) => normalizeSanityKnowledge(item, index))
     .filter((item): item is NormalizedKnowledgeItem => Boolean(item));
@@ -632,7 +711,7 @@ function normalizeSanityContent(payload: SanityPayload): ExperienceContent | nul
             metadata: hotspot.metadata,
             top: `${hotspot.yPercent}%`,
             left: `${hotspot.xPercent}%`,
-            iconType: hotspot.iconType || 'culture',
+            category: normalizeSanityHotspotCategory(hotspot.iconType),
             knowledgeId,
             shortTextOverride: hotspot.shortTextOverride,
           };
@@ -682,6 +761,7 @@ function normalizeSanityContent(payload: SanityPayload): ExperienceContent | nul
     knowledgeItems,
     knowledgeById,
     earliestTimelineYearByEra,
+    categories,
     source: 'sanity',
   };
 }

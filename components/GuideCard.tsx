@@ -6,7 +6,7 @@ type LegendItem = {
   key: string;
   label: string;
   description: string;
-  iconSource: number;
+  iconSource: number | string;
 };
 
 type GuideCardProps = {

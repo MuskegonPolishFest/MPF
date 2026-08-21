@@ -160,41 +160,10 @@ type TimelineEraItem = TimelineItem & { eraKey: EraKey };
 
 const LEFT_BACKGROUND_VECTOR = require('@/assets/maps_svg/background-vector.svg');
 
+// Fallback icon used only if a hotspot's category failed to resolve (e.g. a stale cache
+// from before categories were introduced). Sanity-driven categories carry their own icon.
 const CULTURE_ICON = require('@/assets/POI_Icon/POI_Culture.svg');
 // const HOTSPOT_IMAGE = require('@/assets/content_images/CommunistPoland/CommunistPoland_1.png');
-const HOTSPOT_ICONS = {
-  culture: require('@/assets/POI_Icon/POI_Culture.svg'),
-  biography: require('@/assets/POI_Icon/POI_Biography.svg'),
-  history: require('@/assets/POI_Icon/POI_History.svg'),
-  science: require('@/assets/POI_Icon/POI_Science.svg'),
-};
-
-const LEGEND_ITEMS = [
-  {
-    key: 'culture',
-    label: 'Culture',
-    description: 'Highlights cultural traditions, art, and identity.',
-    iconSource: HOTSPOT_ICONS.culture,
-  },
-  {
-    key: 'biography',
-    label: 'Biography',
-    description: 'Introduces important people connected to this era.',
-    iconSource: HOTSPOT_ICONS.biography,
-  },
-  {
-    key: 'history',
-    label: 'History',
-    description: 'Explains major historical moments and turning points.',
-    iconSource: HOTSPOT_ICONS.history,
-  },
-  {
-    key: 'science',
-    label: 'Science',
-    description: 'Shows discoveries, inventions, and scientific impact.',
-    iconSource: HOTSPOT_ICONS.science,
-  },
-];
 
 const GUIDE_LENS: Record<string, number[]> = {
   Culture: [1635, 1653],
@@ -360,6 +329,16 @@ export default function TimelineScreen({
   }, [showRefreshMessage]);
 
   const content = useExperienceContent();
+  const legendItems = useMemo(
+    () =>
+      content.categories.map((category) => ({
+        key: category.id,
+        label: category.title,
+        description: category.description ?? '',
+        iconSource: category.iconSource,
+      })),
+    [content.categories]
+  );
   const relevantYears = useMemo(() => (activeGuide ? GUIDE_LENS[activeGuide] ?? [] : []), [activeGuide]);
   const timelineItems: TimelineEraItem[] = useMemo(
     () =>
@@ -449,7 +428,7 @@ export default function TimelineScreen({
           guideLabel={guideStyle.label}
           guideColor={guideStyle.color}
           guideDescription={guideStyle.description}
-          legendItems={LEGEND_ITEMS}
+          legendItems={legendItems}
           onStartExploring={() => setShowGuideIntro(false)}
         />
       ) : null}
@@ -463,7 +442,7 @@ export default function TimelineScreen({
           guideStyle?.description ??
           'Explore the map and use these icons to discover stories throughout each era.'
         }
-        legendItems={LEGEND_ITEMS}
+        legendItems={legendItems}
         buttonLabel={guideStyle ? 'Start Exploring' : 'Close'}
         onClose={() => setGuideModalVisible(false)}
       />
@@ -520,7 +499,7 @@ export default function TimelineScreen({
               <GuideCard
                 guideStyle={guideStyle}
                 isRelevant={isCurrentYearRelevant}
-                legendItems={LEGEND_ITEMS}
+                legendItems={legendItems}
                 onExitGuide={() => {
                   router.replace({
                     pathname: '/',
@@ -531,7 +510,7 @@ export default function TimelineScreen({
                 }}
               />
             ) : (
-              <LegendCard legendItems={LEGEND_ITEMS} />
+              <LegendCard legendItems={legendItems} />
             )}
                 
           <View style={{ flexDirection: 'column', gap: 20 }}>
@@ -567,8 +546,7 @@ export default function TimelineScreen({
                   key={hotspot.id}
                   top={hotspot.top}
                   left={hotspot.left}
-                  iconSource={HOTSPOT_ICONS[hotspot.iconType] ?? CULTURE_ICON}                  
-                  // iconSource={HOTSPOT_ICONS[poi.iconType]}
+                  iconSource={hotspot.category?.iconSource ?? CULTURE_ICON}
                   imageSource={normalizedImageSource}
                   isOpen={openPoiId === hotspot.id}
                   onHotspotPress={() =>

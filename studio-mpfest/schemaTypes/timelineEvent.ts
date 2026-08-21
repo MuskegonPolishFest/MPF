@@ -1,12 +1,5 @@
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
-const iconTypes = [
-  {title: 'Culture', value: 'culture'},
-  {title: 'Biography', value: 'biography'},
-  {title: 'History', value: 'history'},
-  {title: 'Science', value: 'science'},
-]
-
 export const timelineEvent = defineType({
   name: 'timelineEvent',
   title: 'Timeline Event',
@@ -96,10 +89,9 @@ export const timelineEvent = defineType({
             }),
             defineField({
               name: 'iconType',
-              title: 'Icon type',
-              type: 'string',
-              options: {list: iconTypes, layout: 'radio'},
-              initialValue: 'culture',
+              title: 'Category',
+              type: 'reference',
+              to: [{type: 'hotspotCategory'}],
               validation: (rule) => rule.required(),
             }),
             defineField({
