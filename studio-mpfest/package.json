@@ -10,6 +10,7 @@
     "deploy-graphql": "sanity graphql deploy",
     "dev": "sanity dev",
     "seed:current": "node scripts/seed-current-content.mjs",
+    "migrate:hotspot-categories": "node scripts/migrate-hotspot-categories.mjs",
     "start": "sanity start"
   },
   "keywords": [
