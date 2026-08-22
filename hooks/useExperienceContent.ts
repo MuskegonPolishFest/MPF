@@ -766,11 +766,19 @@ function normalizeSanityContent(payload: SanityPayload): ExperienceContent | nul
   };
 }
 
+function fetchSanityContentFresh() {
+  // Sanity's query API (api.sanity.io, the non-CDN endpoint) sets no
+  // Cache-Control/Expires headers and rejects unrecognized query string
+  // parameters (e.g. a cache-busting `_ts`) with a 400, so a plain request is
+  // both sufficient and required here.
+  return fetch(`${SANITY_QUERY_URL}?query=${encodeURIComponent(EXPERIENCE_CONTENT_QUERY)}`);
+}
+
 async function fetchExperienceContent(): Promise<ExperienceContent> {
   if (cachedContent) return cachedContent;
   if (inFlightContent) return inFlightContent;
 
-  inFlightContent = fetch(`${SANITY_QUERY_URL}?query=${encodeURIComponent(EXPERIENCE_CONTENT_QUERY)}`)
+  inFlightContent = fetchSanityContentFresh()
     .then(async (response) => {
       if (!response.ok) throw new Error(`Sanity request failed: ${response.status}`);
       const json = (await response.json()) as {result?: SanityPayload};
@@ -794,9 +802,7 @@ export async function refreshExperienceContent(): Promise<{
   status: ContentRefreshStatus;
 }> {
   try {
-    const response = await fetch(
-      `${SANITY_QUERY_URL}?query=${encodeURIComponent(EXPERIENCE_CONTENT_QUERY)}`
-    );
+    const response = await fetchSanityContentFresh();
 
     if (!response.ok) throw new Error(`Sanity request failed: ${response.status}`);
 
@@ -808,8 +814,8 @@ export async function refreshExperienceContent(): Promise<{
       publishContent(sanityContent);
       return {content: sanityContent, status: 'updated'};
     }
-  } catch {
-    // Fall through to cache/fallback below.
+  } catch (error) {
+    console.warn('[refreshExperienceContent] live fetch failed', error);
   }
 
   const cached = await readCachedContent();

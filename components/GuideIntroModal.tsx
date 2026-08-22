@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
 import { Image } from 'expo-image';
 
 type LegendItem = {
@@ -29,7 +29,8 @@ export default function GuideIntroModal({
   return (
     <Modal visible={visible} transparent animationType="fade">
         <Pressable style={styles.overlay} onPress={onStartExploring}>
-        <Pressable style={styles.card} onPress={() => {}}>
+        <TouchableWithoutFeedback onPress={() => {}}>
+        <View style={styles.card}>
             <View style={styles.headerRow}>
             <View style={[styles.dot, { backgroundColor: guideColor, borderColor: guideColor }]} />
             <View style={{ flex: 1 }}>
@@ -45,17 +46,21 @@ export default function GuideIntroModal({
 
             <Text style={styles.sectionTitle}>Map icons</Text>
 
-            <View style={styles.legendList}>
-            {legendItems.map((item) => (
-                <View key={item.key} style={styles.legendRow}>
-                <Image source={item.iconSource} style={styles.legendIcon} contentFit="contain" />
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.legendLabel}>{item.label}</Text>
-                    <Text style={styles.legendDescription}>{item.description}</Text>
-                </View>
-                </View>
-            ))}
+            <ScrollView style={styles.legendScroll} showsVerticalScrollIndicator>
+            <View style={styles.legendGrid}>
+              {legendItems.map((item) => (
+                  <View key={item.key} style={styles.legendCell}>
+                  <Image source={item.iconSource} style={styles.legendIcon} contentFit="contain" />
+                  <View style={{ flex: 1 }}>
+                      <Text style={styles.legendLabel}>{item.label}</Text>
+                      <Text style={styles.legendDescription} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                  </View>
+                  </View>
+              ))}
             </View>
+            </ScrollView>
 
             <Pressable
             style={[styles.primaryButton, { backgroundColor: guideColor }]}
@@ -63,7 +68,8 @@ export default function GuideIntroModal({
             >
             <Text style={styles.primaryButtonText}>Start Exploring</Text>
             </Pressable>
-        </Pressable>
+        </View>
+        </TouchableWithoutFeedback>
         </Pressable>
     </Modal>
     );
@@ -124,13 +130,20 @@ const styles = StyleSheet.create({
     color: '#2F3437',
     marginBottom: 12,
   },
-  legendList: {
-    gap: 12,
+  legendScroll: {
+    maxHeight: 320,
   },
-  legendRow: {
+  legendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 16,
+  },
+  legendCell: {
+    width: '48%',
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 10,
   },
   legendIcon: {
     width: 26,

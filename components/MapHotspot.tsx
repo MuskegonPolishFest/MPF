@@ -22,6 +22,12 @@ type Props = {
   description: string;
 };
 
+// Reference height for the offline fallback hotspot coordinate space (raw pixel `top`
+// values, see constants/hotspotPositions.ts), matching HOTSPOT_BASE_HEIGHT used when that
+// data was seeded. Sanity-driven hotspots instead pass `top` as a "NN%" string.
+const FALLBACK_MAP_HEIGHT = 650;
+const OPEN_DOWNWARD_THRESHOLD = 0.55;
+
 export default function MapHotspot({
   top,
   left,
@@ -35,8 +41,10 @@ export default function MapHotspot({
   yearLabel,
   description,
 }: Props) {
+  const isPercent = typeof top === 'string' && top.endsWith('%');
   const numericTop = typeof top === 'number' ? top : parseFloat(String(top));
-  const openDownward = !Number.isNaN(numericTop) && numericTop < 250;
+  const verticalFraction = isPercent ? numericTop / 100 : numericTop / FALLBACK_MAP_HEIGHT;
+  const openDownward = !Number.isNaN(verticalFraction) && verticalFraction < OPEN_DOWNWARD_THRESHOLD;
 
   return (
     <View
@@ -70,7 +78,9 @@ export default function MapHotspot({
                 <Text style={styles.year}>{yearLabel}</Text>
               </View>
 
-              <Text style={styles.description}>{description}</Text>
+              <Text style={styles.description} numberOfLines={4}>
+                {description}
+              </Text>
             </View>
           </View>
 
