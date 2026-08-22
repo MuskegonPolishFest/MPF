@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
 import { Image } from 'expo-image';
 
 type LegendItem = {
@@ -19,6 +19,8 @@ type GuideCardProps = {
   } | null;
   isRelevant?: boolean;
   legendItems: LegendItem[];
+  expanded: boolean;
+  onToggle: () => void;
   onExitGuide?: () => void;
 };
 
@@ -26,19 +28,18 @@ export default function GuideCard({
   guideStyle,
   isRelevant = false,
   legendItems,
+  expanded,
+  onToggle,
 }: GuideCardProps) {
-  const [expanded, setExpanded] = useState(false);
-
   if (!guideStyle) return null;
 
   return (
     <View style={styles.wrapper}>
-      <Pressable
-        onPress={() => setExpanded((prev) => !prev)}
+      <View
         style={[
           styles.card,
           {
-            width: expanded ? 320 : 220,
+            width: expanded ? 360 : 220,
             borderColor: isRelevant
               ? guideStyle.color
               : guideStyle.chipBorder ?? 'rgba(255,255,255,0.2)',
@@ -47,7 +48,7 @@ export default function GuideCard({
           },
         ]}
       >
-        <View style={styles.headerRow}>
+        <Pressable onPress={onToggle} style={styles.headerRow}>
           <View
             style={[
               styles.dot,
@@ -81,42 +82,50 @@ export default function GuideCard({
               {expanded ? 'Tap to close' : 'Tap to learn more'}
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         {expanded ? (
-          <View style={styles.expandedContent}>
-            {guideStyle.description ? (
-              <Text style={styles.description}>
-                {guideStyle.description}
-              </Text>
-            ) : null}
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={styles.expandedContent}>
+              {guideStyle.description ? (
+                <Text style={styles.description}>
+                  {guideStyle.description}
+                </Text>
+              ) : null}
 
-            {guideStyle.focusesOn?.length ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>This guide focuses on</Text>
-                {guideStyle.focusesOn.map((item) => (
-                  <Text key={item} style={styles.bulletText}>
-                    • {item}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
-
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Map icons</Text>
-              {legendItems.map((item) => (
-                <View key={item.key} style={styles.legendRow}>
-                  <Image source={item.iconSource} style={styles.legendIcon} contentFit="contain" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.legendLabel}>{item.label}</Text>
-                    <Text style={styles.legendDescription}>{item.description}</Text>
-                  </View>
+              {guideStyle.focusesOn?.length ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>This guide focuses on</Text>
+                  {guideStyle.focusesOn.map((item) => (
+                    <Text key={item} style={styles.bulletText}>
+                      • {item}
+                    </Text>
+                  ))}
                 </View>
-              ))}
+              ) : null}
+
+              <View style={[styles.section, styles.legendSection]}>
+                <Text style={styles.sectionLabel}>Map icons</Text>
+                <ScrollView style={styles.legendScroll} showsVerticalScrollIndicator>
+                  <View style={styles.legendGrid}>
+                    {legendItems.map((item) => (
+                      <View key={item.key} style={styles.legendCell}>
+                        <Image source={item.iconSource} style={styles.legendIcon} contentFit="contain" />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.legendLabel}>{item.label}</Text>
+                          <Text style={styles.legendDescription} numberOfLines={2}>
+                            {item.description}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         ) : null}
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -166,6 +175,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.08)',
+    flexShrink: 1,
   },
   description: {
     fontSize: 14,
@@ -174,6 +184,9 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 14,
+  },
+  legendSection: {
+    flexShrink: 1,
   },
   sectionLabel: {
     fontSize: 14,
@@ -187,11 +200,21 @@ const styles = StyleSheet.create({
     color: '#515558',
     marginBottom: 2,
   },
-  legendRow: {
+  legendScroll: {
+    maxHeight: 480,
+    flexShrink: 1,
+  },
+  legendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 14,
+  },
+  legendCell: {
+    width: '48%',
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 10,
+    gap: 8,
   },
   legendIcon: {
     width: 22,

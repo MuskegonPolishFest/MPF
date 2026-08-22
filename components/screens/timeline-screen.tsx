@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { StyleSheet, Text, ToastAndroid, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, ToastAndroid, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -409,10 +409,17 @@ export default function TimelineScreen({
   const visibleHotspots = selectedEvent?.hotspots ?? [];
 
   const [openPoiId, setOpenPoiId] = useState<string | null>(null);
-  
+  const [legendExpanded, setLegendExpanded] = useState(false);
+
   useEffect(() => {
     setOpenPoiId(null);
+    setLegendExpanded(false);
   }, [selectedEra?.year]);
+
+  const dismissOverlays = useCallback(() => {
+    setOpenPoiId(null);
+    setLegendExpanded(false);
+  }, []);
 
   return (
     <View style={styles.screen}>
@@ -448,7 +455,7 @@ export default function TimelineScreen({
       />
 
       <SafeAreaView style={styles.container}>
-        <View style={styles.mapArea}>
+        <Pressable style={styles.mapArea} onPress={dismissOverlays}>
           <View style={styles.leftLandWaterLayer} pointerEvents="none">
             <View style={styles.leftLandFill} />
             <Image source={LEFT_BACKGROUND_VECTOR} style={styles.leftVectorImage} contentFit="fill" />
@@ -500,6 +507,8 @@ export default function TimelineScreen({
                 guideStyle={guideStyle}
                 isRelevant={isCurrentYearRelevant}
                 legendItems={legendItems}
+                expanded={legendExpanded}
+                onToggle={() => setLegendExpanded((prev) => !prev)}
                 onExitGuide={() => {
                   router.replace({
                     pathname: '/',
@@ -510,7 +519,11 @@ export default function TimelineScreen({
                 }}
               />
             ) : (
-              <LegendCard legendItems={legendItems} />
+              <LegendCard
+                legendItems={legendItems}
+                expanded={legendExpanded}
+                onToggle={() => setLegendExpanded((prev) => !prev)}
+              />
             )}
                 
           <View style={{ flexDirection: 'column', gap: 20 }}>
@@ -573,7 +586,7 @@ export default function TimelineScreen({
               );
             })}
 
-          </View>
+          </Pressable>
         <View style={styles.bottomControls}>
           <View style={styles.bottomToggleContainer}>
             <View style={styles.toggleWrapper}>
@@ -599,7 +612,7 @@ export default function TimelineScreen({
               initialIndex={initialYear != null ? getIndexFromYear(timelineItems, initialYear, defaultIndex) : defaultIndex}
               maxGapYears={40}
               pixelsPerYear={3.8}
-              minGapPixels={20}
+              minGapPixels={84}
               onSelect={(_, index) => setSelectedIndex(index)}
             />
           </View>

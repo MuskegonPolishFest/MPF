@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
 import { Image } from 'expo-image';
 
 type LegendItem = {
@@ -11,54 +11,61 @@ type LegendItem = {
 
 type LegendCardProps = {
   legendItems: LegendItem[];
+  expanded: boolean;
+  onToggle: () => void;
 };
 
-export default function LegendCard({ legendItems }: LegendCardProps) {
-  const [expanded, setExpanded] = useState(false);
-
+export default function LegendCard({ legendItems, expanded, onToggle }: LegendCardProps) {
   return (
     <View style={styles.wrapper}>
-      <Pressable
-        onPress={() => setExpanded((prev) => !prev)}
+      <View
         style={[
           styles.card,
           {
-            width: expanded ? 280 : 140,
+            width: expanded ? 320 : 140,
             borderColor: 'rgba(255,255,255,0.2)',
             borderWidth: 1.5,
             backgroundColor: 'rgba(255,255,255,0.92)',
           },
         ]}
       >
-        <View style={styles.headerRow}>
+        <Pressable onPress={onToggle} style={styles.headerRow}>
           <View style={styles.headerTextWrap}>
             <Text style={styles.title}>Legend</Text>
             <Text style={styles.subtitle}>
               {expanded ? 'Tap to close' : 'Tap to see more'}
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         {expanded ? (
-          <View style={styles.expandedContent}>
-            <Text style={styles.sectionLabel}>Map icons</Text>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={styles.expandedContent}>
+              <Text style={styles.sectionLabel}>Map icons</Text>
 
-            {legendItems.map((item) => (
-              <View key={item.key} style={styles.legendRow}>
-                <Image
-                  source={item.iconSource}
-                  style={styles.legendIcon}
-                  contentFit="contain"
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.legendLabel}>{item.label}</Text>
-                  <Text style={styles.legendDescription}>{item.description}</Text>
+              <ScrollView style={styles.legendScroll} showsVerticalScrollIndicator>
+                <View style={styles.legendGrid}>
+                  {legendItems.map((item) => (
+                    <View key={item.key} style={styles.legendCell}>
+                      <Image
+                        source={item.iconSource}
+                        style={styles.legendIcon}
+                        contentFit="contain"
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.legendLabel}>{item.label}</Text>
+                        <Text style={styles.legendDescription} numberOfLines={2}>
+                          {item.description}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
-              </View>
-            ))}
-          </View>
+              </ScrollView>
+            </View>
+          </TouchableWithoutFeedback>
         ) : null}
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -101,6 +108,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.08)',
+    flexShrink: 1,
   },
   sectionLabel: {
     fontSize: 14,
@@ -108,11 +116,21 @@ const styles = StyleSheet.create({
     color: '#2F3437',
     marginBottom: 8,
   },
-  legendRow: {
+  legendScroll: {
+    maxHeight: 480,
+    flexShrink: 1,
+  },
+  legendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 14,
+  },
+  legendCell: {
+    width: '48%',
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 10,
+    gap: 8,
   },
   legendIcon: {
     width: 22,
