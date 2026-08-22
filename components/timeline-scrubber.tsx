@@ -24,13 +24,13 @@ type TimelineScrubberProps = {
   maxGapYears?: number;
   pixelsPerYear?: number;
   minGapPixels?: number;
-  windowSpanYears?: number;
   onSelect?: (item: TimelineItem, index: number) => void;
 };
 
 const TRACK_HORIZONTAL_PADDING = 96;
 const DOT_SIZE = 20;
 const YEAR_LABEL_WIDTH = 68;
+const MIN_LABEL_SPACING = YEAR_LABEL_WIDTH + 8;
 const DEFAULT_ERA_COLOR = '#5f8e3b';
 const PILL_WIDTH = 76;
 const BAR_TOP = 68;
@@ -86,13 +86,12 @@ export function TimelineScrubber({
   activeGuide,
   maxGapYears = 40,
   pixelsPerYear = 4.4,
-  minGapPixels = 18,
-  windowSpanYears = 75,
+  minGapPixels = 84,
   onSelect,
 }: TimelineScrubberProps) {
   const [containerWidth, setContainerWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(Math.min(initialIndex, Math.max(items.length - 1, 0)));
-  const [windowStartYear, setWindowStartYear] = useState(items[0]?.year ?? 0);
+  const [windowStartPosition, setWindowStartPosition] = useState(0);
   const canHandlePanRef = useRef(false);
   const guideStyle = activeGuide ? GUIDE_STYLES[activeGuide] : null;
 
@@ -101,11 +100,19 @@ export function TimelineScrubber({
     [items, maxGapYears, minGapPixels, pixelsPerYear]
   );
 
-  const minYear = items[0]?.year ?? 0;
-  const maxYear = items[items.length - 1]?.year ?? 0;
-  const maxWindowStartYear = Math.max(maxYear - windowSpanYears, minYear);
-  const visibleStartYear = windowStartYear;
-  const visibleEndYear = windowStartYear + windowSpanYears;
+  // Shared with markerXByIndex so windowing and marker placement agree on the same
+  // capped-pixel-space geometry (see buildPositions' gap cap) instead of drifting apart.
+  const { leftEdge, usableWidth } = useMemo(() => {
+    const left = TRACK_HORIZONTAL_PADDING;
+    const right = Math.max(containerWidth - TRACK_HORIZONTAL_PADDING, left + 1);
+    return { leftEdge: left, usableWidth: right - left };
+  }, [containerWidth]);
+
+  const minPosition = positions[0] ?? 0;
+  const maxPosition = positions[positions.length - 1] ?? 0;
+  const maxWindowStartPosition = Math.max(maxPosition - usableWidth, minPosition);
+  const visibleStartPosition = windowStartPosition;
+  const visibleEndPosition = windowStartPosition + usableWidth;
 
   const visibleIndices = useMemo(() => {
     if (items.length === 0) {
@@ -114,11 +121,11 @@ export function TimelineScrubber({
 
     const indices: number[] = [];
     for (let index = 0; index < items.length; index += 1) {
-      const year = items[index].year;
-      if (year < visibleStartYear) {
+      const position = positions[index] ?? 0;
+      if (position < visibleStartPosition) {
         continue;
       }
-      if (year > visibleEndYear) {
+      if (position > visibleEndPosition) {
         break;
       }
       indices.push(index);
@@ -128,7 +135,7 @@ export function TimelineScrubber({
       let nearestIndex = 0;
       let nearestDistance = Number.POSITIVE_INFINITY;
       for (let index = 0; index < items.length; index += 1) {
-        const distance = Math.abs(items[index].year - visibleStartYear);
+        const distance = Math.abs((positions[index] ?? 0) - visibleStartPosition);
         if (distance < nearestDistance) {
           nearestDistance = distance;
           nearestIndex = index;
@@ -138,7 +145,7 @@ export function TimelineScrubber({
     }
 
     return indices;
-  }, [items, visibleEndYear, visibleStartYear]);
+  }, [items, positions, visibleEndPosition, visibleStartPosition]);
 
   const visibleStartIndex = visibleIndices[0] ?? 0;
   const visibleEndIndex = visibleIndices[visibleIndices.length - 1] ?? 0;
@@ -155,9 +162,6 @@ export function TimelineScrubber({
       return markerMap;
     }
 
-    const leftEdge = TRACK_HORIZONTAL_PADDING;
-    const rightEdge = Math.max(containerWidth - TRACK_HORIZONTAL_PADDING, leftEdge + 1);
-    const usableWidth = rightEdge - leftEdge;
     const startPosition = positions[visibleStartIndex] ?? 0;
     const endPosition = positions[visibleEndIndex] ?? startPosition;
     const span = Math.max(endPosition - startPosition, 1);
@@ -168,7 +172,32 @@ export function TimelineScrubber({
     });
 
     return markerMap;
-  }, [containerWidth, positions, visibleEndIndex, visibleIndices, visibleStartIndex]);
+  }, [containerWidth, leftEdge, positions, usableWidth, visibleEndIndex, visibleIndices, visibleStartIndex]);
+
+  // Thin out year labels that would otherwise visually collide when markers sit close
+  // together (dense clusters of nearby years), without hiding their dots/connections.
+  const visibleLabelIndices = useMemo(() => {
+    const labelIndices = new Set<number>();
+    let lastLabeledX: number | null = null;
+
+    visibleIndices.forEach((index) => {
+      if (index === activeIndex) {
+        return;
+      }
+
+      const markerX = markerXByIndex[index];
+      if (markerX == null) {
+        return;
+      }
+
+      if (lastLabeledX == null || markerX - lastLabeledX >= MIN_LABEL_SPACING) {
+        labelIndices.add(index);
+        lastLabeledX = markerX;
+      }
+    });
+
+    return labelIndices;
+  }, [activeIndex, markerXByIndex, visibleIndices]);
 
   const activeMarkerX = markerXByIndex[activeIndex] ?? containerWidth / 2;
   const scrubberCenterX = useSharedValue(activeMarkerX);
@@ -215,28 +244,35 @@ export function TimelineScrubber({
     }
 
     const boundedInitial = Math.min(Math.max(initialIndex, 0), items.length - 1);
-    const initialYear = items[boundedInitial].year;
-    const initialWindowStartYear = Math.min(Math.max(initialYear, minYear), maxWindowStartYear);
+    const initialPosition = positions[boundedInitial] ?? 0;
 
     setActiveIndex(boundedInitial);
-    setWindowStartYear(initialWindowStartYear);
-  }, [initialIndex, items, maxWindowStartYear, minYear]);
+    setWindowStartPosition(initialPosition);
+  }, [initialIndex, items, positions]);
 
   useEffect(() => {
-    const activeYear = items[activeIndex]?.year;
-    if (activeYear == null) {
+    const activePosition = positions[activeIndex];
+    if (activePosition == null) {
       return;
     }
 
-    if (activeYear < windowStartYear) {
-      setWindowStartYear(Math.max(activeYear, minYear));
+    if (activePosition < windowStartPosition) {
+      setWindowStartPosition(Math.max(activePosition, minPosition));
       return;
     }
 
-    if (activeYear > visibleEndYear) {
-      setWindowStartYear(Math.min(activeYear - windowSpanYears, maxWindowStartYear));
+    if (activePosition > visibleEndPosition) {
+      setWindowStartPosition(Math.min(activePosition - usableWidth, maxWindowStartPosition));
     }
-  }, [activeIndex, items, maxWindowStartYear, minYear, visibleEndYear, windowSpanYears, windowStartYear]);
+  }, [
+    activeIndex,
+    positions,
+    maxWindowStartPosition,
+    minPosition,
+    usableWidth,
+    visibleEndPosition,
+    windowStartPosition,
+  ]);
 
   useEffect(() => {
     if (containerWidth === 0) {
@@ -376,7 +412,7 @@ export function TimelineScrubber({
               const item = items[index];
               const markerLeft = markerXByIndex[index] ?? TRACK_HORIZONTAL_PADDING;
               const isActive = index === activeIndex;
-              const showYearLabel = !isActive;
+              const showYearLabel = !isActive && visibleLabelIndices.has(index);
               const isRelevant = item.isRelevant !== false;
 
               return (
