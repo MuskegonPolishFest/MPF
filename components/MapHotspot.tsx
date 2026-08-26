@@ -131,15 +131,19 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 8,
   },
   title: {
+    flex: 1,
+    flexShrink: 1,
+    flexWrap: 'wrap',
     fontSize: 22,
     fontWeight: '700',
     color: '#2E2A2A',
   },
   year: {
+    flexShrink: 0,
     fontSize: 22,
     fontWeight: '700',
     color: '#2E2A2A',

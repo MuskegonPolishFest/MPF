@@ -352,10 +352,7 @@ export default function TimelineScreen({
       })),
     [content.timelineEvents, relevantYears]
   );
-  const defaultIndex = useMemo(
-    () => Math.max(timelineItems.findIndex((item) => item.year === 1635), 0),
-    [timelineItems]
-  );
+  const defaultIndex = 0;
 
   const initialIndex = useMemo(() => {
     if (initialYear != null && !Number.isNaN(initialYear)) {

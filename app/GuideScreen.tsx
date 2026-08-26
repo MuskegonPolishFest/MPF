@@ -205,10 +205,7 @@ export default function GuideScreen() {
       <View
         style={{ alignSelf: "flex-end", marginTop: 24, marginHorizontal: 54 }}
       >
-        <Link
-          href={{ pathname: "/", params: { openTimelineAtYear: "1635" } }}
-          asChild
-        >
+        <Link href="/" asChild>
           <TouchableOpacity style={styles.button}>
             <Text style={styles.buttonText}>Explore the map yourself</Text>
             <Ionicons

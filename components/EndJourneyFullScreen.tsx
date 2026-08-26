@@ -168,7 +168,7 @@ export function EndJourneyFullScreen({ visible, onContinue, onRequestClose }: Pr
 
                     <Animated.View entering={FadeInUp.delay(120).duration(520).easing(easeOut)}>
                       <Text style={styles.bodyMuted}>
-                        {"You've traveled across centuries of Polish history—\nwitnessing change, resilience, and transformation."}
+                        {"You've traveled across centuries of Polish history,\nwitnessing change, resilience, and transformation."}
                       </Text>
                     </Animated.View>
 
