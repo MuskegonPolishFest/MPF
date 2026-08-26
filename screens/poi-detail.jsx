@@ -122,8 +122,17 @@ export default function POIDetailScreen() {
     router.back();
   };
 
-  /** Close (×): leave detail and open the timeline map for this POI’s primary era. */
+  /** Close (×): leave detail and return to the timeline map — at the year the user left off on, if known. */
   const handleClose = () => {
+    if (returnParams.returnRoot === 'timeline' && returnParams.returnYear) {
+      router.replace({
+        pathname: '/',
+        params: {
+          openTimelineAtYear: returnParams.returnYear,
+        },
+      });
+      return;
+    }
     const primaryEra = mainPoi.eraKeys?.[0];
     const year = primaryEra
       ? content.earliestTimelineYearByEra[primaryEra] ?? EARLIEST_TIMELINE_YEAR_BY_ERA[primaryEra]
