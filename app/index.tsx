@@ -41,7 +41,7 @@ export default function IndexScreen() {
 
   const [view, setView] = useState<HomeView>('timeline');
   const [contentEra, setContentEra] = useState<EraKey>('all');
-  const [timelineYear, setTimelineYear] = useState<number | undefined>(1635);
+  const [timelineYear, setTimelineYear] = useState<number | undefined>(undefined);
   const content = useExperienceContent();
 
   const timelineOpacity = useRef(new Animated.Value(1)).current;
