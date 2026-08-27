@@ -19,8 +19,8 @@ export type EraTab = {
 
 /** Earliest timeline year used to open each era’s map (aligned with Content → Timeline). */
 export const EARLIEST_TIMELINE_YEAR_BY_ERA: Record<EraKey, number> = {
-    all: 1635,
-    golden_age: 1635,
+    all: 1400,
+    golden_age: 1400,
     wars_partitions: 1686,
     independence: 1804,
     rebirth: 1914,

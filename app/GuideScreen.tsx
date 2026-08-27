@@ -1,9 +1,27 @@
+import { EARLIEST_TIMELINE_YEAR_BY_ERA, EraKey } from "@/constants/contentData";
 import { MainColors, QuizResultColors, Typography } from "@/constants/theme";
+import { useExperienceContent } from "@/hooks/useExperienceContent";
 import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+const GUIDE_ERA: Record<string, EraKey> = {
+  Culture: "golden_age",
+  Hero: "wars_partitions",
+  Crafter: "rebirth",
+  Adventurer: "ww2",
+};
+
 export default function GuideScreen() {
+  const content = useExperienceContent();
+
+  const yearFor = (guide: string) => {
+    const eraKey = GUIDE_ERA[guide];
+    return String(
+      content.earliestTimelineYearByEra[eraKey] ?? EARLIEST_TIMELINE_YEAR_BY_ERA[eraKey]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.titleContainer}>
@@ -15,7 +33,7 @@ export default function GuideScreen() {
         <Link
           href={{
             pathname: "/",
-            params: { openTimelineAtYear: "1635", guide: "Culture" },
+            params: { openTimelineAtYear: yearFor("Culture"), guide: "Culture" },
           }}
           asChild
         >
@@ -61,7 +79,7 @@ export default function GuideScreen() {
         <Link
           href={{
             pathname: "/",
-            params: { openTimelineAtYear: "1686", guide: "Hero" },
+            params: { openTimelineAtYear: yearFor("Hero"), guide: "Hero" },
           }}
           asChild
         >
@@ -106,7 +124,7 @@ export default function GuideScreen() {
         <Link
           href={{
             pathname: "/",
-            params: { openTimelineAtYear: "1914", guide: "Crafter" },
+            params: { openTimelineAtYear: yearFor("Crafter"), guide: "Crafter" },
           }}
           asChild
         >
@@ -155,7 +173,7 @@ export default function GuideScreen() {
         <Link
           href={{
             pathname: "/",
-            params: { openTimelineAtYear: "1939", guide: "Adventurer" },
+            params: { openTimelineAtYear: yearFor("Adventurer"), guide: "Adventurer" },
           }}
           asChild
         >
